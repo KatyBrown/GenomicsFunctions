@@ -266,6 +266,6 @@ def sampleFastq(infiles, ispaired, nreads, pref, outfile):
 
 
 def bowtieToFastq(infile, outfile, pref):
-    statement = r"""awk -F "\t" '{printf("@%%s/1\n%%s\n+\n%%s\n", $3, $5, $6)}' %s > %s""" % (infile, outfile)
+    statement = r"""awk -F "\t" '{printf("@%%s/1\n%%s\n+\n%%s\n", $1, $5, $6)}' %s > %s""" % (infile, outfile)
     ut_functions.writeCommand(statement, pref)
     os.system(statement)

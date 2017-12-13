@@ -48,6 +48,8 @@ def mapReadsBowtie(infiles, outfile, genomepath, genomename, strand,
                    ispaired, options, mismatches, pref, double=False):
     if double is True:
         bowtie =  "%s/%s/bowtie/%s" % (genomepath, genomename)
+    elif double is "exact":
+        bowtie = genomepath
     else:
         bowtie = "%s/bowtie/%s" % (genomepath, genomename)
 
@@ -68,6 +70,33 @@ def mapReadsBowtie(infiles, outfile, genomepath, genomename, strand,
         in1 = infiles[2]
         statement = '''bowtie2 -x %(bowtie)s -U %(in1)s \
         --met-file %(met)s %(options)s %(mstring)s 2>%(log)s|\
+        samtools view -b > %(outfile)s''' % locals()
+    ut_functions.writeCommand(statement, pref)
+    os.system(statement)
+
+
+def mapReadsBowtie1(infiles, outfile, genomepath, genomename, strand,
+                   ispaired, options, mismatches, pref, double=False):
+    if double is True:
+        bowtie =  "%s/%s/bowtie1/%s" % (genomepath, genomename)
+    elif double is "exact":
+        bowtie = genomepath
+    else:
+        bowtie = "%s/bowtie1/%s" % (genomepath, genomename)
+
+    log = "logs.dir/%s_%s_mapping.log" % (pref, genomename)
+
+    if ispaired:
+        in1 = infiles[0]
+        in2 = infiles[1]
+        statement = '''bowtie -S -q %(bowtie)s \
+        -1 %(in1)s -2 %(in2)s \
+         %(options)s -v %(mismatches)s  2>%(log)s|\
+        samtools view -b > %(outfile)s''' % locals()
+    else:
+        in1 = infiles[2]
+        statement = '''bowtie -S -q %(bowtie)s %(in1)s \
+        %(options)s -v %(mismatches)s 2>%(log)s|\
         samtools view -b > %(outfile)s''' % locals()
     ut_functions.writeCommand(statement, pref)
     os.system(statement)

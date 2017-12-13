@@ -14,17 +14,17 @@ import ut_functions
 
 
 def runSalmon(infiles, outfile, ispaired, pref,
-              transpath, salmon_opts=""):
+              transpath, salmon_opts="", logfile="salmon.log"):
     if os.path.exists(transpath):
         in1, in2, in3 = infiles
         if ispaired:
             statement = '''salmon quant -i %(transpath)s  \
             %(salmon_opts)s --output salmon.dir/%(pref)s \
-            -1 %(in1)s -2 %(in2)s''' % locals()
+            -1 %(in1)s -2 %(in2)s &2>>%(logfile)s''' % locals()
         else:
             statement = '''salmon quant -i %(transpath)s  \
             %(salmon_opts)s --output salmon.dir/%(pref)s \
-            -r %(in3)s''' % locals()
+            -r %(in3)s &2>>%(logfile)s''' % locals()
         ut_functions.writeCommand(statement, pref)
         os.system(statement)
     else:
