@@ -12,6 +12,7 @@ import shutil
 sys.path.append("/mnt/data6A/functions")
 import ut_functions
 import json
+import Run
 
 
 def isPaired(pref, suffix="_sra.tsv"):
@@ -59,7 +60,7 @@ def getStrand(pref, suffix="_strandedness", intype="salmon",
     return ""
 
 
-def inferPairedSRA(pref, outfile):
+def inferPairedSRA(pref, outfile, syst=""):
     T = tempfile.NamedTemporaryFile()
     Tnam = T.name
 
@@ -74,11 +75,12 @@ def inferPairedSRA(pref, outfile):
     # -M 25 very short reads are filtered as some single end
     # datasets have a second very short read
 
-    statement = """fastq-dump -X 1 --split-spot --stdout -Z \
+    statement = """fastq-dump -X 1 --split-spot --stdout -M 25 -Z \
     %(pref)s \
-    -M 25 | wc -l > %(Tnam)s""" % locals()
+    | wc -l > %(Tnam)s""" % locals()
 
     ut_functions.writeCommand(statement, pref)
+    Run.systemRun(statement, syst)
     os.system(statement)
 
     count = int(open(Tnam).readline().strip())

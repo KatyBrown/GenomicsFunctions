@@ -11,10 +11,12 @@ import subprocess
 import shutil
 sys.path.append("/mnt/data6A/functions")
 import ut_functions
+import Run
 
 
 def getSRA(pref, ispaired, log, sra_opts,
-           outfiles, nreads_download=1000000000):
+           outfiles, nreads_download=1000000000,
+           syst=""):
     '''
     Downloads data "pref" from SRA.
     Pref can be either a single SRA ID or a list seperated by "."
@@ -54,7 +56,8 @@ def getSRA(pref, ispaired, log, sra_opts,
             statement += "; rm -rf  %(catlist1)s" % locals()
             statement += "; rm -rf %(catlist2)s" % locals()
             ut_functions.writeCommand(statement, pref)
-            os.system(statement)
+            Run.systemRun(statement, syst)
+
         else:
             nspots = "-X %i" % (nreads_download)
             statement = '''fastq-dump %(nspots)s %(sra_opts)s \
@@ -62,7 +65,7 @@ def getSRA(pref, ispaired, log, sra_opts,
             --outdir fastqs.dir &>>%(log)s\
             %(pref)s ''' % locals()
             ut_functions.writeCommand(statement, pref)
-            os.system(statement)
+            Run.systemRun(statement, syst)
         pathlib.Path(out3).touch()
 
     else:
@@ -85,20 +88,20 @@ def getSRA(pref, ispaired, log, sra_opts,
             gzip > %(out3)s" % locals()
             statement += "; rm -rf  %(catlist)s" % locals()
             ut_functions.writeCommand(statement, pref)
-            os.system(statement)
+            Run.systemRun(statement, syst)
         else:
             nspots = "-X %i" % (nreads_download)
             statement = '''fastq-dump %(nspots)s %(sra_opts)s \
             --gzip -v \
             --outdir fastqs.dir %(pref)s &>%(log)s''' % locals()
             ut_functions.writeCommand(statement, pref)
-            os.system(statement)
+            Run.systemRun(statement, syst)
 
         pathlib.Path(out1).touch()
         pathlib.Path(out2).touch()    
 
 
-def runFastQC(infiles, outfiles, pref, ispaired, log):
+def runFastQC(infiles, outfiles, pref, ispaired, log, syst=""):
 
     if ispaired:
         in1 = infiles[0]
@@ -118,10 +121,11 @@ def runFastQC(infiles, outfiles, pref, ispaired, log):
         pathlib.Path(outfiles[1]).touch()
 
     ut_functions.writeCommand(statement, pref)
-    os.system(statement)
+    Run.systemRun(statement, syst)
 
 
-def trimReadsTrimGalore(infiles, outfiles, ispaired, pref, log, opts):
+def trimReadsTrimGalore(infiles, outfiles, ispaired, pref, log, opts,
+                        syst=""):
     if ispaired:
         in1 = infiles[0]
         in2 = infiles[1]
@@ -129,7 +133,7 @@ def trimReadsTrimGalore(infiles, outfiles, ispaired, pref, log, opts):
         -o trimmed.dir %(opts)s &>%(log)s''' % locals()
         pathlib.Path(outfiles[2]).touch()
         ut_functions.writeCommand(statement, pref)
-        os.system(statement)
+        Run.systemRun(statement, syst)
         stem1 = in1.split("/")[-1]
         shutil.move("trimmed.dir/%s_trimming_report.txt" % stem1,
                     "logs.dir/%s_trimming_report.txt" % stem1)
@@ -143,13 +147,13 @@ def trimReadsTrimGalore(infiles, outfiles, ispaired, pref, log, opts):
         pathlib.Path(outfiles[0]).touch()
         pathlib.Path(outfiles[1]).touch()
         ut_functions.writeCommand(statement, pref)
-        os.system(statement)
+        Run.systemRun(statement, syst)
         stem3 = in1.split("/")[-1]
         shutil.move("trimmed.dir/%s_trimming_report.txt" % stem3,
                     "logs.dir/%s_trimming_report.txt" % stem3)    
 
 
-def renameReads(infiles, outfiles, ispaired, pref):
+def renameReads(infiles, outfiles, ispaired, pref, syst=""):
     if ispaired:
         in1 = infiles[0]
         in2 = infiles[1]
@@ -166,15 +170,16 @@ def renameReads(infiles, outfiles, ispaired, pref):
                       awk '{ if (NR%%4==1) { print $1"_"$2"/1" } \
                       else { print } }'  > %(out1)s''' % locals()
         ut_functions.writeCommand(statement, pref)
-        os.system(statement)
+        Run.systemRun(statement, syst)
         statement = '''%(cat)s %(in2)s \
                       | \
                       awk '{ if (NR%%4==1) { print $1"_"$2"/2" } \
                       else { print } }'  > %(out2)s''' % locals()
         ut_functions.writeCommand(statement, pref)
-        os.system(statement)
+        Run.systemRun(statement, syst)
         if in1.endswith(".gz"):
-            os.system("gzip %(out1)s; gzip %(out2)s" % locals())
+            statement = "gzip %(out1)s; gzip %(out2)s" % locals()
+            Run.systemRun(statement, syst)          
         pathlib.Path(outfiles[2]).touch()
     else:
         in1 = infiles[2]
@@ -189,15 +194,16 @@ def renameReads(infiles, outfiles, ispaired, pref):
                       awk '{ if (NR%%4==1) { print $1"_"$2"/1" } \
                       else { print } }'  > %(out1)s''' % locals()
         ut_functions.writeCommand(statement, pref)
-        os.system(statement)
+        Run.systemRun(statement, syst)
         if in1.endswith(".gz"):
-            os.system("gzip %(out1)s" % locals())
+            statement = "gzip %(out1)s" % locals()
+            Run.systemRun(statement, syst)
         pathlib.Path(outfiles[0]).touch()    
         pathlib.Path(outfiles[1]).touch()    
 
 
 def dustReadsSGA(infiles, outfiles, pref, ispaired, opts, dt,
-                 log):
+                 log, syst=""):
     if ispaired:
         in1 = infiles[0]
         in2 = infiles[1]
@@ -210,7 +216,7 @@ def dustReadsSGA(infiles, outfiles, pref, ispaired, opts, dt,
         cut -f 5-8 | tr '\\t' '\\n' > %(out2)s''' % locals()
         ut_functions.writeCommand(statement, pref)
         pathlib.Path(outfiles[2]).touch()
-        subprocess.call(['bash', '-c', statement])
+        Run.systemRun(["bash", "-c", statement], syst)
         os.system("gzip %s" % out1)
         os.system("gzip %s" % out2)
 
@@ -223,12 +229,15 @@ def dustReadsSGA(infiles, outfiles, pref, ispaired, opts, dt,
         pathlib.Path(outfiles[0]).touch()
         pathlib.Path(outfiles[1]).touch()
         ut_functions.writeCommand(statement, pref)
-        os.system(statement)
-        os.system("gzip %s" % out1)
+        Run.systemRun(statement, syst)
+        statement = "gzip %s" % out1
+        Run.systemRun(statement, syst)
+
     ut_functions.writeTime("Dust", "end", pref)
     
     
-def subsetReads(infiles, outfiles, pref, ispaired, subsetlen):
+def subsetReads(infiles, outfiles, pref, ispaired, subsetlen,
+                syst=""):
     in1, in2, in3 = infiles
     out1, out2, out3 = [o.replace(".gz", "") for o in outfiles]
     if ispaired:
@@ -242,19 +251,20 @@ def subsetReads(infiles, outfiles, pref, ispaired, subsetlen):
         touch %(out1)s.gz;\
         touch %(out2)s.gz;''' % locals()
     ut_functions.writeCommand(statement, pref)
-    os.system(statement)
+    Run.systemRun(statement, syst)
 
 
-def sampleFastq(infiles, ispaired, nreads, pref, outfile):
+def sampleFastq(infiles, ispaired, nreads, pref, outfile, syst=""):
     in1, in2, in3 = infiles
     temp = "%s_temp.out" % pref
     if ispaired:
         nreads = nreads * 2
-        os.system("""zcat %(in1)s %(in2)s \
-        | awk 'NR%%4==2' | shuf -n %(nreads)s > %(temp)s""" % locals())
+        statement = """zcat %(in1)s %(in2)s \
+        | awk 'NR%%4==2' | shuf -n %(nreads)s > %(temp)s""" % locals()
     else:
-        os.system("""zcat %(in3)s \
-        | awk 'NR%%4==2' | shuf -n %(nreads)s > %(temp)s""" % locals())
+        statement = """zcat %(in3)s \
+        | awk 'NR%%4==2' | shuf -n %(nreads)s > %(temp)s""" % locals()
+    Run.systemRun(statement)
     lines = [line.strip() for line in open(temp).readlines()]
     os.unlink(temp)
     i = 0
@@ -265,7 +275,7 @@ def sampleFastq(infiles, ispaired, nreads, pref, outfile):
     out.close()
 
 
-def bowtieToFastq(infile, outfile, pref):
+def bowtieToFastq(infile, outfile, pref, syst=""):
     statement = r"""awk -F "\t" '{printf("@%%s/1\n%%s\n+\n%%s\n", $1, $5, $6)}' %s > %s""" % (infile, outfile)
     ut_functions.writeCommand(statement, pref)
-    os.system(statement)
+    Run.systemRun(statement, syst)

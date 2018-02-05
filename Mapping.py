@@ -11,10 +11,12 @@ import subprocess
 import shutil
 sys.path.append("/mnt/data6A/functions")
 import ut_functions
+import Run
 
 
 def mapReadsHisat(infiles, outfile, genomepath, genomename, strand,
-                  ispaired, options, mismatches, pref, double=False):
+                  ispaired, options, mismatches, pref, double=False,
+                  syst=""):
     if double is True:
         hisat =  "%s/%s/hisat/%s" % (genomepath, genomename,
                                      genomename)
@@ -41,11 +43,12 @@ def mapReadsHisat(infiles, outfile, genomepath, genomename, strand,
         %(mstring)s --met-file %(met)s %(options)s 2>%(log)s|\
         samtools view -b > %(outfile)s''' % locals()
     ut_functions.writeCommand(statement, pref)
-    os.system(statement)
+    Run.systemRun(statement, syst)
 
 
 def mapReadsBowtie(infiles, outfile, genomepath, genomename, strand,
-                   ispaired, options, mismatches, pref, double=False):
+                   ispaired, options, mismatches, pref, double=False,
+                   syst=""):
     if double is True:
         bowtie =  "%s/%s/bowtie/%s" % (genomepath, genomename)
     elif double is "exact":
@@ -72,11 +75,12 @@ def mapReadsBowtie(infiles, outfile, genomepath, genomename, strand,
         --met-file %(met)s %(options)s %(mstring)s 2>%(log)s|\
         samtools view -b > %(outfile)s''' % locals()
     ut_functions.writeCommand(statement, pref)
-    os.system(statement)
+    Run.systemRun(statement, syst)
 
 
 def mapReadsBowtie1(infiles, outfile, genomepath, genomename, strand,
-                   ispaired, options, mismatches, pref, double=False):
+                    ispaired, options, mismatches, pref, double=False,
+                    syst=""):
     if double is True:
         bowtie =  "%s/%s/bowtie1/%s" % (genomepath, genomename)
     elif double is "exact":
@@ -99,7 +103,7 @@ def mapReadsBowtie1(infiles, outfile, genomepath, genomename, strand,
         %(options)s -v %(mismatches)s 2>%(log)s|\
         samtools view -b > %(outfile)s''' % locals()
     ut_functions.writeCommand(statement, pref)
-    os.system(statement)
+    Run.systemRun(statement, syst)
 
 
 def filterMappedReads(infile, outfiles, ispaired, genomename, pref,
@@ -115,32 +119,32 @@ def filterMappedReads(infile, outfiles, ispaired, genomename, pref,
                        -U %(tempout)s  %(infile)s \
                        > %(tempout2)s''' % locals()
         ut_functions.writeCommand(statement, pref)
-        os.system(statement)
+        Run.systemRun(statement, syst)
         statement = '''samtools sort -n %(tempout)s |\
                        samtools fastq -i - -1 %(out1)s -2 %(out2)s \
                        &>%(log)s;\
                        rm -rf %(tempout)s %(tempout2)s''' % locals()
         ut_functions.writeCommand(statement, pref)
-        os.system(statement)
+        Run.systemRun(statement, syst)
         pathlib.Path(out3).touch()
 
     else:
         tempout = infile.replace(".bam", ".temp")
         statement = '''samtools view -F4 -q%(q)s -b\
-                       -U %(tempout)s %(infile)s \
+                       -U %(tempout)s %(infile)s \s
                        > %(tempout2)s''' % locals()
         ut_functions.writeCommand(statement, pref)
-        os.system(statement)
+        Run.systemRun(statement, syst)
         statement = '''samtools sort -n %(tempout)s |
                        samtools fastq -i - -0 %(out3)s &>%(log)s;
                        rm -rf %(tempout)s %(tempout2)s''' % locals()
-        os.system(statement)
+        Run.systemRun(statement, syst)
         pathlib.Path(out1).touch()
         pathlib.Path(out2).touch()
 
 
 def cleanBam(infile, outfile, ispaired, pref,
-             q=10):
+             q=10, syst=""):
     if ispaired == "paired":
         statement = '''samtools view -b -F4 -q%(q)s -f1 -f2 %(infile)s >\
                        %(outfile)s''' % locals()
@@ -149,4 +153,4 @@ def cleanBam(infile, outfile, ispaired, pref,
                        %(outfile)s''' % locals()
 
     ut_functions.writeCommand(statement, pref)
-    os.system(statement)
+    Run.systemRun(statement, syst)
