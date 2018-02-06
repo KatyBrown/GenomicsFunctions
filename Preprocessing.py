@@ -13,10 +13,22 @@ sys.path.append("/mnt/data6A/functions")
 import ut_functions
 import Run
 
+def getEBIAddress(run):
+    prefix = run[0:6]
+    address = "ftp://ftp.sra.ebi.ac.uk/vol1/fastq/%s" % prefix
+    if len(run) == 9:
+        address = "%s/%s/%s" % (address, run, run)
+    elif len(run) == 10:
+        suffix = "00%s" % run[-1]
+        address = "%s/%s/%s/%s"  % (address, suffix, run, run)
+    else:
+        raise ValueError ("run ID not recognised")
+    return (address)
+
 
 def getSRA(pref, ispaired, log, sra_opts,
            outfiles, nreads_download=1000000000,
-           syst=""):
+           syst="", sra='ncbi'):
     '''
     Downloads data "pref" from SRA.
     Pref can be either a single SRA ID or a list seperated by "."
@@ -27,7 +39,7 @@ def getSRA(pref, ispaired, log, sra_opts,
     and single end.
     nreads_download is the maximum number of reads to download.
     '''
-    out1, out2, out3 = outfiles    
+    out1, out2, out3 = outfiles
     if ispaired:
         # merge all the runs into one big fasta file
         if "." in pref:
@@ -38,21 +50,35 @@ def getSRA(pref, ispaired, log, sra_opts,
             # only take a maximum of nspots reads or pairs
             nspots = "-X %i" % (nreads_download / len(runs))
             for run in runs:
-                statement = '''fastq-dump %(nspots)s %(sra_opts)s \
-                --split-files --gzip -v \
-                --outdir fastqs.dir &>>%(log)s\
-                %(run)s ''' % locals()
-                statements.append(statement)
+                if sra == "ncbi":
+                    statement = '''fastq-dump %(nspots)s %(sra_opts)s \
+                    --split-files -v \
+                    --outdir fastqs.dir &>>%(log)s\
+                    %(run)s ''' % locals()
+                    statements.append(statement)
+                elif sra == "ebi":
+                    nrows = nreads_download * 4
+                    address = getEBIAddress(run)
+                    
+                    statement = """curl -s %(address)s_1.fastq.gz | \
+                                   gunzip - | \
+                                   head -n %(nrows)s > \
+                                   fastqs.dir/%(run)s_1.fastq;
+                                   curl -s %(address)s_2.fastq.gz | \
+                                   gunzip - | \
+                                   head -n %(nrows)s > \
+                                   fastqs.dir/%(run)s_2.fastq""" % locals()
+                    statements.append(statement)
             statement = "; ".join(statements)
-            catlist1 = " ".join(["fastqs.dir/%s_1.fastq.gz" % run
+            catlist1 = " ".join(["fastqs.dir/%s_1.fastq" % run
                                  for run in runs])
-            catlist2 = " ".join(["fastqs.dir/%s_2.fastq.gz" % run
+            catlist2 = " ".join(["fastqs.dir/%s_2.fastq" % run
                                  for run in runs])
             # merge the fastq files then delete the originals
-            statement += "; zcat %(catlist1)s | \
-            gzip > %(out1)s" % locals()
-            statement += "; zcat %(catlist2)s | \
-            gzip > %(out2)s" % locals()
+            o1 = out1.replace(".gz", "")
+            o2 = out2.replace(".gz", "")
+            statement += "; cat %(catlist1)s > %(o1)s; gzip %(o1)s" % locals()
+            statement += "; cat %(catlist2)s > %(o2)s; gzip %(o2)s" % locals()
             statement += "; rm -rf  %(catlist1)s" % locals()
             statement += "; rm -rf %(catlist2)s" % locals()
             ut_functions.writeCommand(statement, pref)
@@ -60,12 +86,31 @@ def getSRA(pref, ispaired, log, sra_opts,
 
         else:
             nspots = "-X %i" % (nreads_download)
-            statement = '''fastq-dump %(nspots)s %(sra_opts)s \
-            --split-files --gzip -v \
-            --outdir fastqs.dir &>>%(log)s\
-            %(pref)s ''' % locals()
+            if sra == "ncbi":
+                statement = '''fastq-dump %(nspots)s %(sra_opts)s \
+                --split-files --gzip -v \
+                --outdir fastqs.dir &>>%(log)s\
+                %(pref)s ''' % locals()
+            elif sra == "ebi":
+                nrows = nreads_download * 4
+                run = pref
+                address = getEBIAddress(run)
+                statement = """curl -s %(address)s_1.fastq.gz | \
+                               gunzip - | \
+                               head -n %(nrows)s \
+                               > fastqs.dir/%(run)s_1.fastq;
+                               curl -s %(address)s_2.fastq.gz | \
+                               gunzip - | \
+                               head -n %(nrows)s \
+                               > fastqs.dir/%(run)s_2.fastq""" % locals()
             ut_functions.writeCommand(statement, pref)
             Run.systemRun(statement, syst)
+            statement = 'gzip fastqs.dir/%s_1.fastq' % run
+            ut_functions.writeCommand(statement, pref)
+            Run.systemRun(statement, syst)
+            statement = 'gzip fastqs.dir/%s_2.fastq' % run
+            ut_functions.writeCommand(statement, pref)
+            Run.systemRun(statement, syst) 
         pathlib.Path(out3).touch()
 
     else:
@@ -76,26 +121,49 @@ def getSRA(pref, ispaired, log, sra_opts,
             l.close()
             nspots = "-X %i" % (nreads_download / len(runs))
             for run in runs:
-                statement = '''fastq-dump %(nspots)s %(sra_opts)s \
-                --gzip -v \
-                --outdir fastqs.dir &>>%(log)s\
-                %(run)s ''' % locals()
-                statements.append(statement)
+                if sra == "ncbi":
+                    statement = '''fastq-dump %(nspots)s %(sra_opts)s \
+                     -v \
+                    --outdir fastqs.dir &>>%(log)s\
+                    %(run)s ''' % locals()
+                    statements.append(statement)
+                elif sra == "ebi":
+                    nrows = nreads_download * 4
+                    address = getEBIAddress(run)
+                    statement = """curl -s %(address)s.fastq.gz | \
+                                   gunzip - | \
+                                   head -n %(nrows)s \
+                                   > fastqs.dir/%(run)s.fastq""" % locals()
+                    statements.append(statement)
+                
             statement = "; ".join(statements)
-            catlist = " ".join(["fastqs.dir/%s.fastq.gz" % run
+            catlist = " ".join(["fastqs.dir/%s.fastq" % run
                                 for run in runs])
-            statement += "; zcat %(catlist)s | \
-            gzip > %(out3)s" % locals()
+            o3 = out3.replace(".gz", "")
+            statement += "; cat %(catlist)s > %(o3)s; \
+            gzip %(o3)s" % locals()
             statement += "; rm -rf  %(catlist)s" % locals()
             ut_functions.writeCommand(statement, pref)
             Run.systemRun(statement, syst)
         else:
             nspots = "-X %i" % (nreads_download)
-            statement = '''fastq-dump %(nspots)s %(sra_opts)s \
-            --gzip -v \
-            --outdir fastqs.dir %(pref)s &>%(log)s''' % locals()
+            run = pref
+            if sra == "ncbi":
+                statement = '''fastq-dump %(nspots)s %(sra_opts)s \
+                --gzip -v \
+                --outdir fastqs.dir %(pref)s &>%(log)s''' % locals()
+            elif sra == "ebi":
+                nrows = nreads_download * 4
+                address = getEBIAddress(run)
+                statement = """curl -s %(address)s.fastq.gz | \
+                               gunzip - | \
+                               head -n %(nrows)s \
+                               > fastqs.dir/%(run)s.fastq""" % locals()
             ut_functions.writeCommand(statement, pref)
             Run.systemRun(statement, syst)
+            statement = "gzip fastqs.dir/%s.fastq" % pref
+            ut_functions.writeCommand(statement, pref)
+            Run.systemRun(statement, syst)            
 
         pathlib.Path(out1).touch()
         pathlib.Path(out2).touch()    
@@ -167,7 +235,7 @@ def renameReads(infiles, outfiles, ispaired, pref, syst=""):
             cat = 'cat'
         statement = '''%(cat)s %(in1)s \
                       | \
-                      awk '{ if (NR%%4==1) { print $1"_"$2"/1" } \
+                      awk '{ if (NR%%4==1) { print $1"_"$2"/1" }
                       else { print } }'  > %(out1)s''' % locals()
         ut_functions.writeCommand(statement, pref)
         Run.systemRun(statement, syst)

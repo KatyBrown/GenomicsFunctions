@@ -15,7 +15,9 @@ import Run
 
 
 def mapReadsHisat(infiles, outfile, genomepath, genomename, strand,
-                  ispaired, options, mismatches, pref, double=False,
+                  ispaired, options, mismatches, pref, unmapped=[],
+                  threads=1,
+                  double=False,
                   syst=""):
     if double is True:
         hisat =  "%s/%s/hisat/%s" % (genomepath, genomename,
@@ -30,24 +32,38 @@ def mapReadsHisat(infiles, outfile, genomepath, genomename, strand,
 
     m = -1 * (float(mismatches) * 6)
     mstring = '''--ignore-quals --score-min L,0,%s''' % m
-
+    threads = " -p %s " % threads
     if ispaired:
         in1 = infiles[0]
         in2 = infiles[1]
+        if len(unmapped) != 0:
+            unmapped_path = unmapped[0].replace(".fastq.1.gz", ".fastq.%.gz")
+            unmapped_str = " --un-conc-gz %(unmapped_path)s" % locals()
+        else:
+            unmapped_str = ""
         statement = '''hisat2 -x %(hisat)s %(strand)s -1 %(in1)s -2 %(in2)s \
-        %(mstring)s --met-file %(met)s %(options)s 2>%(log)s|\
+        %(mstring)s --met-file %(met)s %(options)s %(unmapped_str)s %(threads)s 2>%(log)s|\
         samtools view -b > %(outfile)s''' % locals()
     else:
         in1 = infiles[2]
+        if len(unmapped) != 0:
+            unmapped_path = unmapped[2]
+            unmapped_str = " --un-gz %(unmapped_path)s" % locals()
+        else:
+            unmapped_str = ""
         statement = '''hisat2 -x %(hisat)s %(strand)s -U %(in1)s \
-        %(mstring)s --met-file %(met)s %(options)s 2>%(log)s|\
+        %(mstring)s --met-file %(met)s %(options)s %(unmapped_str)s %(threads)s 2>%(log)s|\
         samtools view -b > %(outfile)s''' % locals()
     ut_functions.writeCommand(statement, pref)
     Run.systemRun(statement, syst)
+    for u in unmapped:
+        pathlib.Path(u).touch()
 
 
 def mapReadsBowtie(infiles, outfile, genomepath, genomename, strand,
-                   ispaired, options, mismatches, pref, double=False,
+                   ispaired, options, mismatches, pref, unmapped=[],
+                   threads=1,
+                   double=False,
                    syst=""):
     if double is True:
         bowtie =  "%s/%s/bowtie/%s" % (genomepath, genomename)
@@ -62,20 +78,33 @@ def mapReadsBowtie(infiles, outfile, genomepath, genomename, strand,
 
     m = -1 * (float(mismatches) * 6)
     mstring = '''--ignore-quals --score-min L,0,%s''' % m
-
+    threads = " -p %s " % threads
     if ispaired:
         in1 = infiles[0]
         in2 = infiles[1]
+        if len(unmapped) != 0:
+            unmapped_path = unmapped[0].replace(".fastq.1.gz", ".fastq.%.gz")
+            unmapped_str = " --un-conc-gz %(unmapped_path)s" % locals()
+        else:
+            unmapped_str = ""
         statement = '''bowtie2 -x %(bowtie)s -1 %(in1)s -2 %(in2)s \
-        --met-file %(met)s %(options)s %(mstring)s 2>%(log)s|\
+        --met-file %(met)s %(options)s %(unmapped_str)s %(threads)s %(mstring)s 2>%(log)s|\
         samtools view -b > %(outfile)s''' % locals()
     else:
         in1 = infiles[2]
+        if len(unmapped) != 0:
+            unmapped_path = unmapped[2]
+            unmapped_str = " --un-gz %(unmapped_path)s" % locals()
+        else:
+            unmapped_str = ""
         statement = '''bowtie2 -x %(bowtie)s -U %(in1)s \
-        --met-file %(met)s %(options)s %(mstring)s 2>%(log)s|\
+        --met-file %(met)s %(options)s %(unmapped_str)s %(threads)s %(mstring)s 2>%(log)s|\
         samtools view -b > %(outfile)s''' % locals()
+        
     ut_functions.writeCommand(statement, pref)
     Run.systemRun(statement, syst)
+    for u in unmapped:
+        pathlib.Path(u).touch()
 
 
 def mapReadsBowtie1(infiles, outfile, genomepath, genomename, strand,
@@ -107,7 +136,7 @@ def mapReadsBowtie1(infiles, outfile, genomepath, genomename, strand,
 
 
 def filterMappedReads(infile, outfiles, ispaired, genomename, pref,
-                q=10):
+                      q=10, syst=""):
     out1, out2, out3 = outfiles
     tempout = infile.replace(".bam", ".temp")
     tempout2 = infile.replace(".bam", ".temp2")
@@ -115,7 +144,7 @@ def filterMappedReads(infile, outfiles, ispaired, genomename, pref,
     log = "logs.dir/%s_%s_filtering.log" % (pref, genomename)
 
     if ispaired:
-        statement = '''samtools view -F4 -q%(q)s -f1 -f2 -b \
+        statement = '''samtools view -F4 -q %(q)s -f1 -f2 -b \
                        -U %(tempout)s  %(infile)s \
                        > %(tempout2)s''' % locals()
         ut_functions.writeCommand(statement, pref)
@@ -131,11 +160,11 @@ def filterMappedReads(infile, outfiles, ispaired, genomename, pref,
     else:
         tempout = infile.replace(".bam", ".temp")
         statement = '''samtools view -F4 -q%(q)s -b\
-                       -U %(tempout)s %(infile)s \s
+                       -U %(tempout)s %(infile)s \
                        > %(tempout2)s''' % locals()
         ut_functions.writeCommand(statement, pref)
         Run.systemRun(statement, syst)
-        statement = '''samtools sort -n %(tempout)s |
+        statement = '''samtools sort -n %(tempout)s | \
                        samtools fastq -i - -0 %(out3)s &>%(log)s;
                        rm -rf %(tempout)s %(tempout2)s''' % locals()
         Run.systemRun(statement, syst)

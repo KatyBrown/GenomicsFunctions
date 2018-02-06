@@ -72,10 +72,10 @@ def inferPairedSRA(pref, outfile, syst=""):
 
     # writes a single alignment to file and checks if it has
     # 8 lines - paired or 4 lines - single.
-    # -M 25 very short reads are filtered as some single end
+    # -M 4 very short reads are filtered as some single end
     # datasets have a second very short read
 
-    statement = """fastq-dump -X 1 --split-spot --stdout -M 25 -Z \
+    statement = """fastq-dump -X 1 --split-spot --stdout -Z \
     %(pref)s \
     | wc -l > %(Tnam)s""" % locals()
 
@@ -87,8 +87,10 @@ def inferPairedSRA(pref, outfile, syst=""):
     o = open(outfile, "w")
     if count == 8:
         o.write("paired")
-    else:
+    elif count == 4:
         o.write("single")
+    else:
+        raise AssertionError ("can't infer endedness of %s" % pref)
     o.close()
 
 

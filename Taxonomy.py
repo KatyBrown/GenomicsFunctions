@@ -89,13 +89,13 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
         # Retrieve the full XML record for the ID
         # this query often seems to fail for no reason - keep trying
         # until it doesn't or for 10 tries
- 
-        statement = 'efetch -db sra -id %s -format xml' % ID
-        if log == "on":
-             ut_functions.writeCommand(statement, ID)
-        x = "\n".join(Run.systemPopen(statement).read())
-        xdict = xmltodict.parse(x)
-        """
+        try:
+            statement = 'efetch -db sra -id %s -format xml' % ID
+            if log == "on":
+                 ut_functions.writeCommand(statement, ID)
+            x = "\n".join(Run.systemPopen(statement, syst))
+            xdict = xmltodict.parse(x)
+            break
         except:
             if x == 10:
                 print ("Failed to connect to NCBI: attempt %i" % x)
@@ -103,7 +103,6 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
             else:
                 x += 1
                 continue
-        """
     # Parse this into a dictionary
     d = xdict['EXPERIMENT_PACKAGE_SET']['EXPERIMENT_PACKAGE']
     experiment = d['EXPERIMENT']
@@ -158,7 +157,7 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
     if log == "on":
         ut_functions.writeCommand(statement, ID)
     x = Run.systemPopen(statement, syst)
-    if len(x) != 1:
+    if len(x) > 1:
         reftype = "H"
     else:
         statement = '''esearch -db assembly -query "txid%s[Organism]" \
@@ -166,7 +165,7 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
         if log == "on":
             ut_functions.writeCommand(statement, ID)
         x = Run.systemPopen(statement, syst)
-        if len(x) != 1:
+        if len(x) > 1:
             reftype = "G"
         else:
             statement = '''esearch -db assembly \
@@ -174,11 +173,12 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
                           | efetch -format uilist''' % familyID
             if log == "on":
                 ut_functions.writeCommand(statement, ID)
-            x = Run.systemPpopen(statement, syst)
-            if len(x) != 1:
+            x = Run.systemPopen(statement, syst)
+            if len(x) > 1:
                 reftype = "F"
             else:
                 reftype = "N"
+                reference = "X"
     results['Reference_Type'] = reftype
 
     if reftype == "H":
