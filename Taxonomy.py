@@ -49,7 +49,6 @@ def findFamilyGenus(taxonid, nodespath, syst=""):
         fam = "NA"
     else:
         fam = (x2[0].values[0])
-
     types = set(x[2].values)
     newvals = set(x[1])
     while "genus" not in types and k < 15:
@@ -145,6 +144,7 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
     familyID, genusID, family, genus = findFamilyGenus(taxonid,
                                                        nodespath)
 
+
     genusID = str(genusID)
     familyID = str(familyID)
 
@@ -157,7 +157,8 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
     if log == "on":
         ut_functions.writeCommand(statement, ID)
     x = Run.systemPopen(statement, syst)
-    if len(x) > 1:
+    print (x)
+    if len(x) >= 1:
         reftype = "H"
     else:
         statement = '''esearch -db assembly -query "txid%s[Organism]" \
@@ -165,7 +166,7 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
         if log == "on":
             ut_functions.writeCommand(statement, ID)
         x = Run.systemPopen(statement, syst)
-        if len(x) > 1:
+        if len(x) >= 1:
             reftype = "G"
         else:
             statement = '''esearch -db assembly \
@@ -174,7 +175,7 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
             if log == "on":
                 ut_functions.writeCommand(statement, ID)
             x = Run.systemPopen(statement, syst)
-            if len(x) > 1:
+            if len(x) >= 1:
                 reftype = "F"
             else:
                 reftype = "N"
