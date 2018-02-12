@@ -13,7 +13,10 @@ def findTaxonID(species_name, syst=""):
     statement = 'esearch -db taxonomy -query "%s" \
                  | efetch' % species_name
     L = Run.systemPopen(statement, syst)
-    return L[0]
+    if len(L) == 0:
+        return "000"
+    else:
+        return L[0]
 
 
 def findTaxonName(taxid, syst=""):
@@ -93,8 +96,8 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
             statement = 'efetch -db sra -id %s -format xml' % ID
             if log == "on":
                  ut_functions.writeCommand(statement, ID)
-            x = "\n".join(Run.systemPopen(statement, syst))
-            xdict = xmltodict.parse(x)
+            y = "\n".join(Run.systemPopen(statement, syst))
+            xdict = xmltodict.parse(y)
             break
         except:
             if x == 10:
@@ -165,9 +168,11 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
         if log == "on":
             ut_functions.writeCommand(statement, ID)
         x = Run.systemPopen(statement, syst)
-        if len(x) > 1:
+        if len(x) > 1 and not genusID.endswith("dae"):
             reftype = "G"
         else:
+            if genusID.endswith("dae"):
+                familyID = genusID
             statement = '''esearch -db assembly \
                           -query "txid%s[Organism]" \
                           | efetch -format uilist''' % familyID
@@ -182,6 +187,15 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
     results['Reference_Type'] = reftype
 
     if reftype == "H":
+        if sciname == "Drosophila pseudoobscura"
+            sciname = "Drosophila pseudoobscura pseudoobscura"
+        if sciname == "Apis"
+            sciname = "Apis mellifera"
+        if sciname == "Heliconius melpomene":
+            sciname = "Heliconius melpomene melpomene"
+        if sciname == "Heliconius cydno":
+            sciname = "Heliconius cydno hermogenes"
+
         assert taxonid in species, "Host %s reference genome exists but not found" % sciname
         reference = sciname
     elif reftype == "G":

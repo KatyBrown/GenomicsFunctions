@@ -85,6 +85,7 @@ def getSRA(pref, ispaired, log, sra_opts,
             Run.systemRun(statement, syst)
 
         else:
+            run = pref
             nspots = "-X %i" % (nreads_download)
             if sra == "ncbi":
                 statement = '''fastq-dump %(nspots)s %(sra_opts)s \
@@ -93,7 +94,6 @@ def getSRA(pref, ispaired, log, sra_opts,
                 %(pref)s ''' % locals()
             elif sra == "ebi":
                 nrows = nreads_download * 4
-                run = pref
                 address = getEBIAddress(run)
                 statement = """curl -s %(address)s_1.fastq.gz | \
                                gunzip - | \
