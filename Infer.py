@@ -15,29 +15,30 @@ import json
 import Run
 
 
-def isPaired(pref, suffix="_sra.tsv"):
+def isPaired(pref, suffix="_sra.tsv", direc="."):
     '''
     Reads a file in the working directory nammed prefsuffix
     containing either "paired" or "single" and returns
     True for paired and False for single.
     '''
-    ispaired = open("%s%s" % (pref, suffix)).readline().strip()
+    ispaired = open("%s/%s%s" % (direc, pref, suffix)).readline().strip()
     return (True if ispaired == "paired" else False)
 
 
-def getReadLength(pref, suffix="_readlength.tsv"):
+def getReadLength(pref, suffix="_readlength.tsv", direc="."):
     '''
     Reads a file in the working directory named prefsuffix
     containing only read length and returns this as an integer.
     '''
-    readlen = int(open("%s%s" % (pref, suffix)).readline().strip())
+    readlen = int(open("%s/%s%s" % (direc, pref,
+                                    suffix)).readline().strip())
     return (readlen)
 
 
 def getStrand(pref, suffix="_strandedness", intype="salmon",
-              prog="hisat"):
+              prog="hisat", direc="."):
 
-    path = "%s.dir/%s%s.tsv" % (intype, pref, suffix)
+    path = "%s/%s.dir/%s%s.tsv" % (direc, intype, pref, suffix)
     try:
         df = pd.read_csv(path, sep="\t")
     except:
@@ -75,23 +76,18 @@ def inferPairedSRA(pref, outfile, syst=""):
     # -M 4 very short reads are filtered as some single end
     # datasets have a second very short read
 
-    statement = """fastq-dump -X 1 --split-spot --stdout -Z \
-    %(pref)s \
-    | wc -l > %(Tnam)s""" % locals()
+    statement = """fastq-dump -X 1 --split-files %(pref)s """ % locals()
 
     ut_functions.writeCommand(statement, pref)
     Run.systemRun(statement, syst)
-    os.system(statement)
-
-    count = int(open(Tnam).readline().strip())
     o = open(outfile, "w")
-    if count == 8:
+    if os.path.exists("%s_2.fastq" % pref):
         o.write("paired")
-    elif count == 4:
-        o.write("single")
+        os.unlink("%s_2.fastq" % pref)
     else:
-        raise AssertionError ("can't infer endedness of %s" % pref)
+        o.write("single")
     o.close()
+    os.unlink("%s_1.fastq" % pref)
 
 
 def inferReadLenFastQC(infiles, ispaired, outfile):
