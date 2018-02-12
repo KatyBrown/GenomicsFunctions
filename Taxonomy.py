@@ -188,9 +188,9 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
     results['Reference_Type'] = reftype
 
     if reftype == "H":
-        if sciname == "Drosophila pseudoobscura"
+        if sciname == "Drosophila pseudoobscura":
             sciname = "Drosophila pseudoobscura pseudoobscura"
-        if sciname == "Apis"
+        if sciname == "Apis":
             sciname = "Apis mellifera"
         if sciname == "Heliconius melpomene":
             sciname = "Heliconius melpomene melpomene"
