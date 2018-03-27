@@ -63,6 +63,9 @@ def findFamilyGenus(taxonid, nodespath, syst=""):
         genus = "NA"
     else:
         genus = (x2[0].values[0])
+    if taxonid == "2065263":
+        genus = "6726"
+        fam = "6725"
     return (fam, genus, findTaxonName(fam, syst=syst),
             findTaxonName(genus, syst=syst))
 
