@@ -85,14 +85,15 @@ def inferPairedSRA(pref, outfile, syst=""):
         o.write("paired")
         os.unlink("%s_2.fastq" % pref)
         os.unlink("%s_1.fastq" % pref)
-    elif os.path.exists("%s_1.fastq" % pref):
+    elif os.path.exists("%s_1.fastq" % pref) or os.path.exists("%s_2.fastq" % pref):
         o.write("single")
     else:
         raise RuntimeError ("Couldn't downloaded SRA data to determine endedness for %s" % pref)
     o.close()
     if os.path.exists("%s_1.fastq" % pref):
         os.unlink("%s_1.fastq" % pref)
-
+    if os.path.exists("%s_2.fastq" % pref):
+        os.unlink("%s_2.fastq" % pref)
 
 def inferReadLenFastQC(infiles, ispaired, outfile):
     out = open(outfile, "w")
