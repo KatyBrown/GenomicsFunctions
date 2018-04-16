@@ -27,7 +27,10 @@ def findTaxonName(taxid, syst=""):
                     xtract -pattern ScientificName \
                     -element ScientificName''' % taxid
     L = Run.systemPopen(statement, syst)
-    return L[0]
+    if len(L) == 0:
+        return "000"
+    else:
+        return L[0]
 
 
 def findFamilyGenus(taxonid, nodespath, syst=""):
@@ -49,9 +52,12 @@ def findFamilyGenus(taxonid, nodespath, syst=""):
         newvals = set(x2[1])
         j += 1
     if j == 15:
-        fam = "NA"
+        fam = "000"
     else:
-        fam = (x2[0].values[0])
+        try:
+            fam = (x2[0].values[0])
+        except:
+            fam = "000"
     types = set(x[2].values)
     newvals = set(x[1])
     while "genus" not in types and k < 15:
@@ -60,13 +66,27 @@ def findFamilyGenus(taxonid, nodespath, syst=""):
         newvals = set(x2[1])
         k += 1
     if k == 15:
-        genus = "NA"
+        genus = "000"
     else:
-        genus = (x2[0].values[0])
-    return (fam, genus, findTaxonName(fam, syst=syst),
-            findTaxonName(genus, syst=syst))
+        try:
+            genus = (x2[0].values[0])
+        except:
+            genus = "000"
+    if taxonid == "2065263":
+        genus = "6726"
+        fam = "6725"
+    if genus == "000":
+        genusname = "000"
+    else:
+        genusname = findTaxonName(genus)
+    if fam == "000":
+        familyname = "000"
+    else:
+        familyname = findTaxonName(fam)
+    return (fam, genus, familyname,
+            genusname)
 
-    
+
 def getMetadataSRA(ID, genomesdir, nodespath, outfile,
                    log="on", syst=""):
     genomes = glob.glob("%s/*/" % genomesdir)
@@ -83,6 +103,7 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
         species.append(g[1])
         genus.append(g[3])
         family.append(g[5])
+    species.append("000")
     fdict = dict(zip(family, speciesnames))
     gdict = dict(zip(genus, speciesnames))
 
@@ -160,7 +181,6 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
     if log == "on":
         ut_functions.writeCommand(statement, ID)
     x = Run.systemPopen(statement, syst)
-    print (x)
     if len(x) >= 1:
         reftype = "H"
     else:
@@ -169,10 +189,11 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
         if log == "on":
             ut_functions.writeCommand(statement, ID)
         x = Run.systemPopen(statement, syst)
-        if len(x) >= 1 and not genus.ID.endswith("dae"):
+        if len(x) >= 1 and not genus.endswith("dae"):
             reftype = "G"
         else:
-            if genusID.endswith("dae"):
+            if genus.endswith("dae"):
+                family = genus
                 familyID = genusID
             statement = '''esearch -db assembly \
                           -query "txid%s[Organism]" \
@@ -190,13 +211,35 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
     if reftype == "H":
         if sciname == "Drosophila pseudoobscura":
             sciname = "Drosophila pseudoobscura pseudoobscura"
+            taxonid = "46245"
         if sciname == "Apis":
             sciname = "Apis mellifera"
+            taxonid = "7460"
         if sciname == "Heliconius melpomene":
             sciname = "Heliconius melpomene melpomene"
+            taxonid = "171917"
         if sciname == "Heliconius cydno":
             sciname = "Heliconius cydno hermogenes"
-
+            taxonid = "1501340"
+        if sciname == "Hawaiian Drosophila":
+            sciname = 'Drosophila grimshawi'
+            taxonid = '7222'
+        if sciname == "Ceratosolen solmsi":
+            sciname = "Ceratosolaen solmsi marchali"
+            taxonid = '326594'
+        if sciname == "Glossina palpalis":
+            sciname = "Glossina palpalis gambiensis"
+            taxonid = '67801'
+        if sciname == "Odonata" or sciname == "Lepidoptera" or sciname == "Insecta" or sciname == "Curculionidae":
+            sciname = "X"
+            taxonid = "000"
+        if sciname == "Galleria":
+            sciname = "Galleria_mellonella"
+            taxonid = "7137"
+        if sciname == "Penaeus":
+            sciname = "Penaeus_monodon"
+            taxonid = "6687"
+        
         assert taxonid in species, "Host %s reference genome exists but not found" % sciname
         reference = sciname
     elif reftype == "G":

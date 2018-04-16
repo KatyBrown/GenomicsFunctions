@@ -79,15 +79,19 @@ def inferPairedSRA(pref, outfile, syst=""):
     statement = """fastq-dump -X 1 --split-files %(pref)s """ % locals()
 
     ut_functions.writeCommand(statement, pref)
-    Run.systemRun(statement, syst)
+    Run.systemReRun(statement, syst)
     o = open(outfile, "w")
-    if os.path.exists("%s_2.fastq" % pref):
+    if os.path.exists("%s_2.fastq" % pref) and os.path.exists("%s_1.fastq" % pref):
         o.write("paired")
         os.unlink("%s_2.fastq" % pref)
-    else:
+        os.unlink("%s_1.fastq" % pref)
+    elif os.path.exists("%s_1.fastq" % pref):
         o.write("single")
+    else:
+        raise RuntimeError ("Couldn't downloaded SRA data to determine endedness for %s" % pref)
     o.close()
-    os.unlink("%s_1.fastq" % pref)
+    if os.path.exists("%s_1.fastq" % pref):
+        os.unlink("%s_1.fastq" % pref)
 
 
 def inferReadLenFastQC(infiles, ispaired, outfile):
