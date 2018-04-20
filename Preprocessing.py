@@ -13,6 +13,7 @@ sys.path.append("/mnt/data6A/functions")
 import ut_functions
 import Run
 import gzip
+import time
 
 
 def getEBIAddress(run):
@@ -26,11 +27,11 @@ def getEBIAddress(run):
     else:
         raise ValueError ("run ID not recognised")
     return (address)
-
-
+    
+    
 def getSRA(pref, ispaired, log, sra_opts,
            outfiles, nreads_download=1000000000,
-           syst="", sra='ncbi'):
+           syst="", sra='ncbi', asperadir=""):
     '''
     Downloads data "pref" from SRA.
     Pref can be either a single SRA ID or a list seperated by "."
@@ -73,6 +74,23 @@ def getSRA(pref, ispaired, log, sra_opts,
                                        head -n %(nrows)s > \
                                        fastqs.dir/%(run)s_2.fastq""" % locals()
                         statements.append(statement)
+                    elif sra == 'aspera_ebi':
+                        nrows = nreads_download * 4
+                        address = getEBIAddress(run)
+                        asp = address.replace("ftp://ftp.sra.ebi.ac.uk", "")
+                        tempname1 = "run_%s_1.fastq.gz" % run
+                        tempname2 = "run_%s_2.fastq.gz" % run
+                        statement = """
+                        ascp -QT -l 300m -P33001 -i %(asperadir)s/etc/asperaweb_id_dsa.openssh era-fasp@fasp.sra.ebi.ac.uk:%(asp)s_1.fastq.gz fastqs.dir;
+                        mv fastqs.dir/%(run)s_1.fastq.gz fastqs.dir/%(tempname1)s;\
+                        zcat fastqs.dir/%(tempname1)s | head -%(nrows)s > fastqs.dir/%(run)s_1.fastq;
+                        ascp -QT -l 300m -P33001 -i %(asperadir)s/etc/asperaweb_id_dsa.openssh era-fasp@fasp.sra.ebi.ac.uk:%(asp)s_2.fastq.gz fastqs.dir;
+                        mv fastqs.dir/%(run)s_2.fastq.gz fastqs.dir/%(tempname2)s;\
+                        zcat fastqs.dir/%(tempname1)s | head -%(nrows)s > fastqs.dir/%(run)s_2.fastq;
+                        rm -rf fastqs.dir/%(tempname1)s;
+                        rm -rf fastqs.dir/%(tempname2)s""" % locals()
+                        statements.append(statement)
+
                 statement = "; ".join(statements)
                 catlist1 = " ".join(["fastqs.dir/%s_1.fastq" % run
                                      for run in runs])
@@ -81,12 +99,13 @@ def getSRA(pref, ispaired, log, sra_opts,
                 # merge the fastq files then delete the originals
                 o1 = out1.replace(".gz", "")
                 o2 = out2.replace(".gz", "")
-                statement += "; cat %(catlist1)s > %(o1)s; gzip %(o1)s" % locals()
-                statement += "; cat %(catlist2)s > %(o2)s; gzip %(o2)s" % locals()
+                statement += "; cat %(catlist1)s > %(o1)s; gzip -f %(o1)s" % locals()
+                statement += "; cat %(catlist2)s > %(o2)s; gzip -f %(o2)s" % locals()
                 statement += "; rm -rf  %(catlist1)s" % locals()
                 statement += "; rm -rf %(catlist2)s" % locals()
                 ut_functions.writeCommand(statement, pref)
                 Run.systemRun(statement, syst)
+
             else:
                 run = pref
                 nspots = "-X %i" % (nreads_download)
@@ -106,12 +125,28 @@ def getSRA(pref, ispaired, log, sra_opts,
                                    gunzip - | \
                                    head -n %(nrows)s \
                                    > fastqs.dir/%(run)s_2.fastq""" % locals()
+  
+                elif sra == "aspera_ebi":
+                    nrows = nreads_download * 4
+                    address = getEBIAddress(run)
+                    asp = address.replace("ftp://ftp.sra.ebi.ac.uk", "")
+                    tempname1 = "run_%s_1.fastq.gz" % run
+                    tempname2 = "run_%s_2.fastq.gz" % run
+                    statement = """
+                    ascp -QT -l 300m -P33001 -i %(asperadir)s/etc/asperaweb_id_dsa.openssh era-fasp@fasp.sra.ebi.ac.uk:%(asp)s_1.fastq.gz fastqs.dir;
+                    mv fastqs.dir/%(run)s_1.fastq.gz fastqs.dir/%(tempname1)s;\
+                    zcat fastqs.dir/%(tempname1)s | head -%(nrows)s > fastqs.dir/%(run)s_1.fastq;
+                    ascp -QT -l 300m -P33001 -i %(asperadir)s/etc/asperaweb_id_dsa.openssh era-fasp@fasp.sra.ebi.ac.uk:%(asp)s_2.fastq.gz fastqs.dir;
+                    mv fastqs.dir/%(run)s_2.fastq.gz fastqs.dir/%(tempname2)s;\
+                    zcat fastqs.dir/%(tempname1)s | head -%(nrows)s > fastqs.dir/%(run)s_2.fastq;
+                    rm -rf fastqs.dir/%(tempname1)s;
+                    rm -rf fastqs.dir/%(tempname2)s""" % locals()
                 ut_functions.writeCommand(statement, pref)
                 Run.systemRun(statement, syst)
-                statement = 'gzip fastqs.dir/%s_1.fastq' % run
+                statement = 'gzip -f fastqs.dir/%s_1.fastq' % run
                 ut_functions.writeCommand(statement, pref)
                 Run.systemRun(statement, syst)
-                statement = 'gzip fastqs.dir/%s_2.fastq' % run
+                statement = 'gzip -f fastqs.dir/%s_2.fastq' % run
                 ut_functions.writeCommand(statement, pref)
                 Run.systemRun(statement, syst) 
             pathlib.Path(out3).touch()
@@ -138,7 +173,17 @@ def getSRA(pref, ispaired, log, sra_opts,
                                        head -n %(nrows)s \
                                        > fastqs.dir/%(run)s.fastq""" % locals()
                         statements.append(statement)
-                    
+                    elif sra == "aspera_ebi":
+                        nrows = nreads_download * 4
+                        address = getEBIAddress(run)
+                        asp = address.replace("ftp://ftp.sra.ebi.ac.uk", "")
+                        tempname = "run_%s.fastq.gz" % run
+                        statement = """
+                        ascp -QT -l 300m -P33001 -i %(asperadir)s/etc/asperaweb_id_dsa.openssh era-fasp@fasp.sra.ebi.ac.uk:%(asp)s.fastq.gz fastqs.dir;
+                        mv fastqs.dir/%(run)s.fastq.gz fastqs.dir/%(tempname)s;\
+                        zcat fastqs.dir/%(tempname)s | head -%(nrows)s > fastqs.dir/%(run)s.fastq;
+                        rm -rf fastqs.dir/%(tempname)s""" % locals()
+                        statements.append(statement)
                 statement = "; ".join(statements)
                 catlist = " ".join(["fastqs.dir/%s.fastq" % run
                                     for run in runs])
@@ -162,9 +207,19 @@ def getSRA(pref, ispaired, log, sra_opts,
                                    gunzip - | \
                                    head -n %(nrows)s \
                                    > fastqs.dir/%(run)s.fastq""" % locals()
+                elif sra == "aspera_ebi":
+                    nrows = nreads_download * 4
+                    address = getEBIAddress(run)
+                    asp = address.replace("ftp://ftp.sra.ebi.ac.uk", "")
+                    tempname = "run_%s.fastq.gz" % run
+                    statement = """
+                    ascp -QT -l 300m -P33001 -i %(asperadir)s/etc/asperaweb_id_dsa.openssh era-fasp@fasp.sra.ebi.ac.uk:%(asp)s.fastq.gz fastqs.dir;
+                    mv fastqs.dir/%(run)s.fastq.gz fastqs.dir/%(tempname)s;\
+                    zcat fastqs.dir/%(tempname)s | head -%(nrows)s > fastqs.dir/%(run)s.fastq;
+                    rm -rf fastqs.dir/%(tempname)s""" % locals()
                 ut_functions.writeCommand(statement, pref)
                 Run.systemRun(statement, syst)
-                statement = "gzip fastqs.dir/%s.fastq" % pref
+                statement = "gzip -f fastqs.dir/%s.fastq" % pref
                 ut_functions.writeCommand(statement, pref)
                 Run.systemRun(statement, syst)            
             pathlib.Path(out1).touch()
@@ -174,10 +229,14 @@ def getSRA(pref, ispaired, log, sra_opts,
             o2 = gzip.open(out2).readlines(10)
             if len(o1) != 0 and len(o2) != 0:
                 break
+            else:
+                time.sleep(20)
         else:
             o = gzip.open(out3).readlines(10)
             if len(o) != 0:
                 break
+            else:
+                time.sleep(20)
         x += 1
 
 
