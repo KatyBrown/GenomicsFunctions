@@ -1,3 +1,9 @@
+'''
+Various functions to make inferences about datasets downloaded from SRA.
+Several functions require the output of the preprocessing steps in
+sra_to_filtered_fastq.py.
+'''
+
 from ruffus import *
 import ruffus.cmdline as cmdline
 import pandas as pd
@@ -20,6 +26,15 @@ def isPaired(pref, suffix="_sra.tsv", direc="."):
     Reads a file in the working directory nammed prefsuffix
     containing either "paired" or "single" and returns
     True for paired and False for single.
+
+    Parameters
+    ----------
+    pref: str
+        prefix of the input file name
+    suffix: str
+        suffix of the input file name
+    direc: str
+        path to directory containing the input file    
     '''
     ispaired = open("%s/%s%s" % (direc, pref, suffix)).readline().strip()
     return (True if ispaired == "paired" else False)
@@ -27,8 +42,16 @@ def isPaired(pref, suffix="_sra.tsv", direc="."):
 
 def getReadLength(pref, suffix="_readlength.tsv", direc="."):
     '''
-    Reads a file in the working directory named prefsuffix
-    containing only read length and returns this as an integer.
+    Reads a file containing only read length and returns this as an integer.
+    
+    Parameters
+    ----------
+    pref: str
+        prefix of the input file name
+    suffix: str
+        suffix of the input file name
+    direc: str
+        path to directory containing the input file
     '''
     readlen = int(open("%s/%s%s" % (direc, pref,
                                     suffix)).readline().strip())
@@ -37,18 +60,50 @@ def getReadLength(pref, suffix="_readlength.tsv", direc="."):
 
 def getStrand(pref, suffix="_strandedness", intype="salmon",
               prog="hisat", direc="."):
-
+    '''
+    Reads a file containing only a dataframe describing library strandedness
+    (generated with inferStrandednessSalmon below).
+    formatted for one software package (currently only salmon is implemented)
+    and returns a string formatted as part of the input statement
+    for another package
+    (currently implemented: hisat, bowtie, trinity).
+    Assumes the input is stored in directory "direc" as 
+    inputpackage.dir/prefsuffix.tsv
+    e.g. for salmon.dir/SRR12345_strandedness.tsv
+    intype = "salmon"
+    pref = "SRR12345"
+    suffix = "_strandedness.tsv"
+    
+    Parameters
+    ----------
+    pref: str
+        prefix for input filename
+    suffix: str
+        suffix for input filename
+    intype: str
+        input format (salmon)
+    prog: str
+        output format (hisat, bowtie, trinity)
+    direc: str
+        directory containing the file to be parsed
+    '''
+    # path to the directory containing the raw salmon output
     path = "%s/%s.dir/%s%s.tsv" % (direc, intype, pref, suffix)
+    
+    # if the input file doesn't exist, assume unstranded
     try:
         df = pd.read_csv(path, sep="\t")
-    except:
+    except FileNotFoundError:
         return ""
-    if prog == "hisat":
+    if prog == "hisat" or prog == "bowtie":
         cmd = "--rna-strandness"
     elif prog == "trinity":
         cmd = "--SS_lib_type"
 
     val = df['expected_format'].values[0]
+    
+    # conversion between salmon libtypes and libtypes used by
+    # bowtie, hisat and trinity
     if intype == "salmon":
         if val == "ISR":
                 return " %s RF " % cmd
@@ -62,6 +117,18 @@ def getStrand(pref, suffix="_strandedness", intype="salmon",
 
 
 def inferPairedSRA(pref, outfile, syst=""):
+    '''
+    Infers if an SRA dataset is paired or single end.
+    Uses the NCBI fastq-dump --split-files function, which generates
+    one output file for single end and two for paired end.
+    Parameters
+    ----------
+    pref: str
+        SRA ID for sample
+    outfile: str
+        output file - contains only "paired" or "single"
+    
+    '''
     T = tempfile.NamedTemporaryFile()
     Tnam = T.name
 
@@ -71,31 +138,53 @@ def inferPairedSRA(pref, outfile, syst=""):
     if "." in pref:
         pref = pref.split(".")[0]
 
-    # writes a single alignment to file and checks if it has
-    # 8 lines - paired or 4 lines - single.
-    # -M 4 very short reads are filtered as some single end
-    # datasets have a second very short read
 
+    # Execute fastq-dump using -X1 - take the first read or read pair only
     statement = """fastq-dump -X 1 --split-files %(pref)s """ % locals()
-
     ut_functions.writeCommand(statement, pref)
     Run.systemReRun(statement, syst)
+    
+    
     o = open(outfile, "w")
+    # if the data is paired end there will be two files labelled as 
+    # _1.fastq and _2.fastq, otherwise there will only be one
+    # this one is usually _1.fastq but occasionally _2.fastq
+    # Files are deleted once the type is known
+
     if os.path.exists("%s_2.fastq" % pref) and os.path.exists("%s_1.fastq" % pref):
         o.write("paired")
         os.unlink("%s_2.fastq" % pref)
         os.unlink("%s_1.fastq" % pref)
+    
     elif os.path.exists("%s_1.fastq" % pref) or os.path.exists("%s_2.fastq" % pref):
         o.write("single")
+        if os.path.exists("%s_1.fastq" % pref):
+            os.unlink("%s_1.fastq" % pref)
+        if os.path.exists("%s_2.fastq" % pref):
+            os.unlink("%s_2.fastq" % pref)
     else:
         raise RuntimeError ("Couldn't downloaded SRA data to determine endedness for %s" % pref)
     o.close()
-    if os.path.exists("%s_1.fastq" % pref):
-        os.unlink("%s_1.fastq" % pref)
-    if os.path.exists("%s_2.fastq" % pref):
-        os.unlink("%s_2.fastq" % pref)
+    
 
 def inferReadLenFastQC(infiles, ispaired, outfile):
+    '''
+    Uses the output of FastQC software to determine the read length of the
+    dataset.  Parses the fastqc_data file to determine this.  Where this is a
+    range the top end of the range is used.
+    Parameters
+    ----------
+    infiles: list
+        list of output files from FastQC - this should always be a list of
+        three: ['read_1' , 'read_2', 'single_end'] but for paired end the final
+        file is empty and for single end the first two files are empty.
+    ispaired: bool
+        True if data is paired end else False
+    outfile: str
+        path to output file - will contain only an integer of maximum read
+        length
+    
+    '''
     out = open(outfile, "w")
     if ispaired:
         dat1 = open(
@@ -117,7 +206,20 @@ def inferReadLenFastQC(infiles, ispaired, outfile):
 
 
 def inferStrandednessSalmon(infile, outfile):
+    '''
+    Uses the output from Salmon software to determine the strandedness
+    of an RNA-seq library.
+    Running salmon with --libtype "A" outputs a json file containing
+    the inferred library type.
+    Parameters
+    ----------
+    infile: str
+        path to the salmon lib_format_counts.json file
+    outfile: str
+        path to output file
+    '''
     if os.path.exists(infile):
+        # parse the json file into a dataframe
         j = json.load(open(infile, "r"))
         vals = list(j.values())
         cols = list(j.keys())
