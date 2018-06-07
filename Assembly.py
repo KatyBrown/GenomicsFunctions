@@ -22,12 +22,12 @@ def runTrinity(infiles, pref, ispaired, strand, outfile, threads=1,
 
     if ispaired:
         statement = '''Trinity --seqType fq %(strand)s --max_memory %(mem)s \
-                       --CPU %(threads)s --left %(in1)s --right %(in2)s \
-                       --output %(outstem)s &>%(log)s''' % locals()
+                       --CPU %(threads)s --left %(in1)s --right %(in2)s --full_cleanup \
+                       --output %(outstem)s 2>%(log)s''' % locals()
     else:
         statement = '''Trinity --seqType fq %(strand)s --max_memory %(mem)s \
-                       --CPU %(threads)s --single %(in3)s \
-                       --output %(outstem)s &>%(log)s''' % locals()
+                       --CPU %(threads)s --single %(in3)s --full_cleanup \
+                       --output %(outstem)s 2>%(log)s''' % locals()
     ut_functions.writeCommand(statement, pref)
     Run.systemRun(statement, syst)
     ut_functions.writeTime("Trinity", "end", pref)

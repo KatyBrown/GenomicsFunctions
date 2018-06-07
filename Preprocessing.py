@@ -44,7 +44,7 @@ def getSRA(pref, ispaired, log, sra_opts,
     '''
     out1, out2, out3 = outfiles
     x = 0
-    while True and x < 5:
+    while True and x < 25:
         if ispaired:
             # merge all the runs into one big fasta file
             if "." in pref:
@@ -189,7 +189,7 @@ def getSRA(pref, ispaired, log, sra_opts,
                                     for run in runs])
                 o3 = out3.replace(".gz", "")
                 statement += "; cat %(catlist)s > %(o3)s; \
-                gzip %(o3)s" % locals()
+                gzip -f %(o3)s" % locals()
                 statement += "; rm -rf  %(catlist)s" % locals()
                 ut_functions.writeCommand(statement, pref)
                 Run.systemRun(statement, syst)
