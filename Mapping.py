@@ -5,16 +5,8 @@ user defined parameters.
 
 from ruffus import *
 import ruffus.cmdline as cmdline
-import pandas as pd
-import numpy as np
-import os
-import re
 import sys
 import pathlib
-import tempfile
-import subprocess
-import shutil
-sys.path.append("/mnt/data6A/functions")
 import ut_functions
 import Run
 
@@ -201,6 +193,7 @@ def mapReadsBowtie1(infiles, outfile, genomepath, genomename,
     Generates and runs a statement to map reads using bowtie1
     
     http://bowtie-bio.sourceforge.net/index.shtml
+    
     The genome index needs to be generated prior to running the pipeline.
     
     Keeping unmapped reads is not yet implemented.

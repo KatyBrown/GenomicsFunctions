@@ -6,15 +6,8 @@ user defined parameters.
 
 from ruffus import *
 import ruffus.cmdline as cmdline
-import pandas as pd
-import numpy as np
 import os
-import re
-import sys
 import pathlib
-import tempfile
-import subprocess
-import shutil
 import ut_functions
 import Run
 
@@ -22,9 +15,12 @@ def runSalmon(infiles, outfile, ispaired, pref,
               transpath, salmon_opts="", logfile="salmon.log",
               syst=""):
     '''
-    Generates a statement and runs
-    Salmon (https://salmon.readthedocs.io/en/latest/salmon.html) to quantify
-    reads across a transcriptome.
+    Generates a statement and runs Salmon
+    
+    https://salmon.readthedocs.io/en/latest/salmon.html
+    
+    Quantifies reads across a transcriptome.
+    
     The transcriptome needs to be indexed prior to processing.
     
     Parameters

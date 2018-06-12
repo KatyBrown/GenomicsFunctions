@@ -5,15 +5,7 @@ user defined parameters.
 
 from ruffus import *
 import ruffus.cmdline as cmdline
-import pandas as pd
-import numpy as np
-import os
-import re
-import sys
 import pathlib
-import tempfile
-import subprocess
-import shutil
 import ut_functions
 import Run
 

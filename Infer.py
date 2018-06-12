@@ -7,14 +7,9 @@ sra_to_filtered_fastq.py.
 from ruffus import *
 import ruffus.cmdline as cmdline
 import pandas as pd
-import numpy as np
 import os
-import re
 import sys
-import pathlib
 import tempfile
-import subprocess
-import shutil
 sys.path.append("/mnt/data6A/functions")
 import ut_functions
 import json
