@@ -66,7 +66,7 @@ def getStrand(pref, suffix="_strandedness", intype="salmon",
     formatted for one software package (currently only salmon is implemented)
     and returns a string formatted as part of the input statement
     for another package
-    (currently implemented: hisat, bowtie, trinity).
+    (currently implemented: hisat,trinity).
     Assumes the input is stored in directory "direc" as 
     inputpackage.dir/prefsuffix.tsv
     e.g. for salmon.dir/SRR12345_strandedness.tsv
@@ -83,7 +83,7 @@ def getStrand(pref, suffix="_strandedness", intype="salmon",
     intype: str
         input format (salmon)
     prog: str
-        output format (hisat, bowtie, trinity)
+        output format (hisat, trinity)
     direc: str
         directory containing the file to be parsed
     '''
@@ -95,7 +95,7 @@ def getStrand(pref, suffix="_strandedness", intype="salmon",
         df = pd.read_csv(path, sep="\t")
     except FileNotFoundError:
         return ""
-    if prog == "hisat" or prog == "bowtie":
+    if prog == "hisat":
         cmd = "--rna-strandness"
     elif prog == "trinity":
         cmd = "--SS_lib_type"
