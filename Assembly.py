@@ -1,3 +1,8 @@
+'''
+Functions to run different assembly software within a pipeline using
+user defined parameters.
+'''
+
 from ruffus import *
 import ruffus.cmdline as cmdline
 import pandas as pd
