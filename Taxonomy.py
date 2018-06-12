@@ -8,15 +8,22 @@ import Run
 
 def findTaxonID(species_name, syst=""):
     '''
-    Return the taxonomy ID for a species name
+    Returns the taxonomy ID for a species name
+
     Uses the NCBI command line toolkit
     https://www.ncbi.nlm.nih.gov/books/NBK179288/
+
     Parameters
     ----------
     species_name: str
         scientific name of the species
     syst: str
-        system option to run statements on different systems   
+        system option to run statements on different systems
+    
+    Returns
+    -------
+    str
+        NCBI taxonomy ID for species
     '''
     statement = 'esearch -db taxonomy -query "%s" \
                  | efetch' % species_name
@@ -30,15 +37,22 @@ def findTaxonID(species_name, syst=""):
 
 def findTaxonName(taxid, syst=""):
     '''
-    Return the scientific name for a taxonomy ID
+    Return the scientific name for a taxonomy ID.
+    
     Uses the NCBI command line toolkit
     https://www.ncbi.nlm.nih.gov/books/NBK179288/
+    
     Parameters
     ----------
     taxid: str
         NCBI taxonomy ID of the species
     syst: str
-        system option to run statements on different systems 
+        system option to run statements on different systems
+        
+    Returns
+    -------
+    str
+        scientific name of taxon
     '''
     statement = '''efetch -db taxonomy -id %s -format xml | \
                     xtract -pattern ScientificName \
@@ -53,13 +67,13 @@ def findTaxonName(taxid, syst=""):
 
 def findFamilyGenus(taxonid, nodespath, syst=""):
     '''
-    Return the family and genus for a taxonomy ID,
-    based on the nodes.dmp file downloaded from NCBI
+    Return the family and genus for a taxonomy ID.
+    
+    Based on the nodes.dmp file downloaded from NCBI
     and stored in nodespath.
     
     From the NCBI website:
     nodes.dmp
-    ---------
     This file represents taxonomy nodes. The description for each node includes 
     the following fields:
     
@@ -84,7 +98,12 @@ def findFamilyGenus(taxonid, nodespath, syst=""):
     nodespath: str
         path to the NCBI taxonomy nodes.dmp file
     syst: str
-        system option to run statements on different systems    
+        system option to run statements on different systems
+    
+    Returns
+    -------
+    tuple
+        family taxonomy ID, genus taxonomy ID, family name, genus name
     '''
     # read the nodes.dmp file
     tab = pd.read_csv(nodespath, sep="|", header=None)
@@ -158,6 +177,8 @@ def findFamilyGenus(taxonid, nodespath, syst=""):
 def getMetadataSRA(ID, genomesdir, nodespath, outfile,
                    log="on", syst=""):
     '''
+    Retrieves metadata for an SRA ID.
+    
     Takes an SRA ID and retrieves the full XML record for this ID from NCBI
     taxonomy.  The following fields are extracted:
         Experiment: SRA experiment ID

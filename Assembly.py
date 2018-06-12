@@ -21,8 +21,10 @@ import Run
 def runTrinity(infiles, pref, ispaired, strand, outfile, threads=1,
                mem="50G", syst=""):
     '''
-    Generates and runs a statement to run the Trinity assembly software:
-        https://github.com/trinityrnaseq/trinityrnaseq/wiki
+    Generates and runs a statement to run the Trinity assembly software.
+    
+    https://github.com/trinityrnaseq/trinityrnaseq/wiki
+    
     Parameters
     ----------
     infiles: list

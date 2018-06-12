@@ -48,15 +48,21 @@ import time
 
 def getEBIAddress(run):
     '''
-    Formats an SRA run ID into the EBI server address for the same
-    ID
+    Formats an SRA run ID into the EBI server address for the same ID
+    
     e.g.
     SRR2904018 >
     ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR290/008/SRR2904018/SRR2904018.fastq.gz
+    
     Parameters
     ----------
     run: str
-        SRA run ID
+        SRA run ID]
+    
+    Returns
+    -------
+    str
+        path to SRA ID on EBI server
     '''
     prefix = run[0:6]
     address = "ftp://ftp.sra.ebi.ac.uk/vol1/fastq/%s" % prefix
@@ -75,7 +81,7 @@ def getSRA(pref, ispaired, log, sra_opts,
            outfiles, nreads_download=1000000000,
            syst="", sra='ncbi', asperadir=""):
     '''
-    Downloads data "pref" from SRA.
+    Downloads dataset "pref" from SRA.
     
     Generates a statement which downloads all the replicates for a sample,
     takes the first n reads from each and concatenates these into
@@ -409,8 +415,11 @@ def getSRA(pref, ispaired, log, sra_opts,
 
 def runFastQC(infiles, outfiles, pref, ispaired, log, syst=""):
     '''
-    Generates a statement and runs FastQC (https://www.bioinformatics.babraham.ac.uk/projects/fastqc/)
-    to generate a basic quality report for the data.
+    Generates a statement and runs FastQC
+    
+    Runs FastQC (https://www.bioinformatics.babraham.ac.uk/projects/fastqc/)
+    Generates a basic quality report for the data.
+
     Parameters
     ----------
     infiles: list
@@ -454,7 +463,9 @@ def trimReadsTrimGalore(infiles, outfiles, ispaired, pref, log, opts,
                         syst=""):
     '''
     Generates and runs a statement to trim reads using Trim Galore
+    
     (https://github.com/FelixKrueger/TrimGalore/blob/master/Docs/Trim_Galore_User_Guide.md)
+
     Parameters
     ----------
     infiles: list
@@ -504,6 +515,8 @@ def trimReadsTrimGalore(infiles, outfiles, ispaired, pref, log, opts,
 
 def renameReads(infiles, outfiles, ispaired, pref, syst=""):
     '''
+    Appends /1 and /2 to read names in a fastq file.
+
     Generates and runs a statement which reads a fastq file and renames
     the reads according to the convention required by various software
     and removes spaces from read names
@@ -588,8 +601,11 @@ def renameReads(infiles, outfiles, ispaired, pref, syst=""):
 def dustReadsSGA(infiles, outfiles, pref, ispaired, opts, dt,
                  log, syst=""):
     '''
-    Generates and runs a statement to run the the SGA preprocess
-    "dust" tool (https://vcru.wisc.edu/simonlab/bioinformatics/programs/sga/preprocess.txt), which removes low complexity reads.
+    Generates and runs a statement to run the SGA preprocess "dust" tool
+    
+    https://vcru.wisc.edu/simonlab/bioinformatics/programs/sga/preprocess.txt
+    Removes low complexity reads.
+
     Parameters
     ----------
     infiles: list
@@ -647,8 +663,11 @@ def dustReadsSGA(infiles, outfiles, pref, ispaired, opts, dt,
 def subsetReads(infiles, outfiles, pref, ispaired, subsetlen,
                 syst=""):
     '''
+    Takes the first n reads from a FASTQ file
+    
     Generates and runs a statement which takes the first subsetlen reads
     from a FASTQ file.
+
     Parameters
     ----------
     infiles: list
@@ -687,11 +706,13 @@ def subsetReads(infiles, outfiles, pref, ispaired, subsetlen,
 
 def sampleFastq(infiles, ispaired, nreads, pref, outfile, syst=""):
     '''
-    Takes a random sample of size nreads from a fastq file and converts the
-    output into a fasta file.
+    Takes a random sample of size nreads from a fastq file.
+    
+    Saves result into a fasta file.
     For paired end reads the sample is taken from both input files combined -
     the number of reads from each mate is not fixed - and twice as many reads
     are selected.
+
     Parameters
     ----------
     infiles: list

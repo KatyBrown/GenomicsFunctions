@@ -23,6 +23,8 @@ import Run
 
 def isPaired(pref, suffix="_sra.tsv", direc="."):
     '''
+    Reads a file containing only "paired" or "single" and returns True or False
+
     Reads a file in the working directory nammed prefsuffix
     containing either "paired" or "single" and returns
     True for paired and False for single.
@@ -34,7 +36,12 @@ def isPaired(pref, suffix="_sra.tsv", direc="."):
     suffix: str
         suffix of the input file name
     direc: str
-        path to directory containing the input file    
+        path to directory containing the input file
+        
+    Returns
+    -------
+    bool
+        True if paired, False if single
     '''
     ispaired = open("%s/%s%s" % (direc, pref, suffix)).readline().strip()
     return (True if ispaired == "paired" else False)
@@ -52,6 +59,11 @@ def getReadLength(pref, suffix="_readlength.tsv", direc="."):
         suffix of the input file name
     direc: str
         path to directory containing the input file
+        
+    Returns
+    -------
+    int
+        read length
     '''
     readlen = int(open("%s/%s%s" % (direc, pref,
                                     suffix)).readline().strip())
@@ -61,8 +73,9 @@ def getReadLength(pref, suffix="_readlength.tsv", direc="."):
 def getStrand(pref, suffix="_strandedness", intype="salmon",
               prog="hisat", direc="."):
     '''
-    Reads a file containing only a dataframe describing library strandedness
-    (generated with inferStrandednessSalmon below).
+    Reads a file containing only a dataframe describing library strandedness.
+    
+    Files are generated with inferStrandednessSalmon below.
     formatted for one software package (currently only salmon is implemented)
     and returns a string formatted as part of the input statement
     for another package
@@ -86,6 +99,11 @@ def getStrand(pref, suffix="_strandedness", intype="salmon",
         output format (hisat, trinity)
     direc: str
         directory containing the file to be parsed
+    
+    Returns
+    -------
+    str
+        strand information formatted for specific software
     '''
     # path to the directory containing the raw salmon output
     path = "%s/%s.dir/%s%s.tsv" % (direc, intype, pref, suffix)
@@ -119,8 +137,10 @@ def getStrand(pref, suffix="_strandedness", intype="salmon",
 def inferPairedSRA(pref, outfile, syst=""):
     '''
     Infers if an SRA dataset is paired or single end.
+
     Uses the NCBI fastq-dump --split-files function, which generates
     one output file for single end and two for paired end.
+
     Parameters
     ----------
     pref: str
@@ -169,9 +189,13 @@ def inferPairedSRA(pref, outfile, syst=""):
 
 def inferReadLenFastQC(infiles, ispaired, outfile):
     '''
+    Determines read length from FastQC output.
+    
     Uses the output of FastQC software to determine the read length of the
     dataset.  Parses the fastqc_data file to determine this.  Where this is a
     range the top end of the range is used.
+
+
     Parameters
     ----------
     infiles: list
@@ -207,10 +231,13 @@ def inferReadLenFastQC(infiles, ispaired, outfile):
 
 def inferStrandednessSalmon(infile, outfile):
     '''
-    Uses the output from Salmon software to determine the strandedness
-    of an RNA-seq library.
+    Uses the output from Salmon software to determine strandedness.
+    
+    Uses the output from Salmon software to determine strandedness of an
+    RNA-seq library.
     Running salmon with --libtype "A" outputs a json file containing
     the inferred library type.
+
     Parameters
     ----------
     infile: str

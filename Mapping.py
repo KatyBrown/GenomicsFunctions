@@ -24,8 +24,9 @@ def mapReadsHisat(infiles, outfile, genomepath, genomename, strand,
                   threads=1,
                   syst=""):
     '''
-    Generates and runs a statement to map reads using hisat2:
-        https://ccb.jhu.edu/software/hisat2/index.shtml
+    Generates and runs a statement to map reads using hisat2.
+    
+    https://ccb.jhu.edu/software/hisat2/index.shtml
     The genome index needs to be generate prior to running the pipeline.
     
     Parameters
@@ -110,8 +111,9 @@ def mapReadsBowtie(infiles, outfile, genomepath, genomename, strand,
                    threads=1,
                    syst=""):
     '''
-    Generates and runs a statement to map reads using bowtie2:
-        http://bowtie-bio.sourceforge.net/bowtie2/index.shtml
+    Generates and runs a statement to map reads using bowtie2.
+    
+    http://bowtie-bio.sourceforge.net/bowtie2/index.shtml
     The genome index needs to be generate prior to running the pipeline.
     Bowtie2 and Hisat2 mostly have identical parameters but bowtie2 doesn't
     need a "strand" parameter
@@ -196,8 +198,9 @@ def mapReadsBowtie1(infiles, outfile, genomepath, genomename,
                     ispaired, options, mismatches, pref, threads,
                     syst=""):
     '''
-    Generates and runs a statement to map reads using bowtie1:
-        http://bowtie-bio.sourceforge.net/index.shtml
+    Generates and runs a statement to map reads using bowtie1
+    
+    http://bowtie-bio.sourceforge.net/index.shtml
     The genome index needs to be generated prior to running the pipeline.
     
     Keeping unmapped reads is not yet implemented.
@@ -249,9 +252,12 @@ def mapReadsBowtie1(infiles, outfile, genomepath, genomename,
 def filterMappedReads(infile, outfiles, ispaired, genomename, pref,
                       q=10, syst=""):
     '''
+    Extracts unmapped reads from a bam file and converts to FASTQ
+
     Filters a bam file to remove mapped, properly paired reads with 
     quality scores above q then converts the remainder back into a fastq file
     (the unmapped reads).
+
     Parameters
     ----------
     infiles: str
@@ -317,6 +323,8 @@ def filterMappedReads(infile, outfiles, ispaired, genomename, pref,
 def cleanBam(infile, outfile, ispaired, pref,
              q=10, syst=""):
     '''
+    Filters a bam file.
+    
     Filters a bam file to keep only mapped, properly paired reads with a 
     quality score >= q
     
