@@ -1,4 +1,7 @@
 '''
+Functions to perform various preprocessing tasks on sequencing data
+prior to mapping.
+
 In order to use the same pipeline for single and paired end data, for
 software which requires different settings for single and paired
 end data a list of three input files and three output files is used, with
@@ -202,7 +205,7 @@ def getSRA(pref, ispaired, log, sra_opts,
                         zcat fastqs.dir/%(tempname1)s | head -%(nrows)s > fastqs.dir/%(run)s_1.fastq;
                         ascp -QT -l 300m -P33001 -i %(asperadir)s/etc/asperaweb_id_dsa.openssh era-fasp@fasp.sra.ebi.ac.uk:%(asp)s_2.fastq.gz fastqs.dir;
                         mv fastqs.dir/%(run)s_2.fastq.gz fastqs.dir/%(tempname2)s;\
-                        zcat fastqs.dir/%(tempname1)s | head -%(nrows)s > fastqs.dir/%(run)s_2.fastq;
+                        zcat fastqs.dir/%(tempname2)s | head -%(nrows)s > fastqs.dir/%(run)s_2.fastq;
                         rm -rf fastqs.dir/%(tempname1)s;
                         rm -rf fastqs.dir/%(tempname2)s""" % locals()
                         statements.append(statement)
@@ -271,7 +274,7 @@ def getSRA(pref, ispaired, log, sra_opts,
                     zcat fastqs.dir/%(tempname1)s | head -%(nrows)s > fastqs.dir/%(run)s_1.fastq;
                     ascp -QT -l 300m -P33001 -i %(asperadir)s/etc/asperaweb_id_dsa.openssh era-fasp@fasp.sra.ebi.ac.uk:%(asp)s_2.fastq.gz fastqs.dir;
                     mv fastqs.dir/%(run)s_2.fastq.gz fastqs.dir/%(tempname2)s;\
-                    zcat fastqs.dir/%(tempname1)s | head -%(nrows)s > fastqs.dir/%(run)s_2.fastq;
+                    zcat fastqs.dir/%(tempname2)s | head -%(nrows)s > fastqs.dir/%(run)s_2.fastq;
                     rm -rf fastqs.dir/%(tempname1)s;
                     rm -rf fastqs.dir/%(tempname2)s""" % locals()
                 ut_functions.writeCommand(statement, pref)
