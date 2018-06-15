@@ -258,6 +258,7 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
             if log == "on":
                  ut_functions.writeCommand(statement, ID)
             y = "\n".join(Run.systemPopen(statement, syst))
+            print (y)
             xdict = xmltodict.parse(y)
             break
         except:
