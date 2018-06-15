@@ -407,7 +407,8 @@ def getSRA(pref, ispaired, log, sra_opts,
 
 
 
-def runFastQC(infiles, outfiles, pref, ispaired, log, syst=""):
+def runFastQC(infiles, outfiles, pref, ispaired, threads=4,
+              log, syst=""):
     '''
     Generates a statement and runs FastQC
     
@@ -424,11 +425,14 @@ def runFastQC(infiles, outfiles, pref, ispaired, log, syst=""):
         filename prefix (used for the command log file)
     ispaired: bool
         True if paired end else False
+    threads: int
+        Number of threads with which to run FastQC
     log: str
         path to output FastQC log file
     syst: str
         system option to run statements on different systems 
     '''
+    job_threads = threads
     if ispaired:
         in1 = infiles[0]
         in2 = infiles[1]
@@ -436,14 +440,16 @@ def runFastQC(infiles, outfiles, pref, ispaired, log, syst=""):
         out2 = outfiles[1].replace(".html", ".zip")
         # statement to run fastqc and unzip the output
         statement = '''fastqc %(in1)s %(in2)s \
-        -o fastqc.dir &>%(log)s; unzip %(out1)s -d fastqc.dir;\
+        -o fastqc.dir -threads %(threads)i &>%(log)s;
+        unzip %(out1)s -d fastqc.dir;\
         unzip %(out2)s -d fastqc.dir''' % locals()
         pathlib.Path(outfiles[2]).touch()
     else:
         in1 = infiles[2]
         out1 = outfiles[2].replace(".html", ".zip")
         # statement to run fastqc and unzip the output
-        statement = '''fastqc %(in1)s -o fastqc.dir &>%(log)s;\
+        statement = '''fastqc %(in1)s -o fastqc.dir
+        -threads %(threads)i &>%(log)s;\
         unzip %(out1)s -d fastqc.dir''' % locals()
         pathlib.Path(outfiles[0]).touch()
         pathlib.Path(outfiles[1]).touch()

@@ -13,7 +13,7 @@ import Run
 
 def mapReadsHisat(infiles, outfile, genomepath, genomename, strand,
                   ispaired, options, mismatches, pref, unmapped=[],
-                  threads=1,
+                  threads=1, maxmem=3.9G,
                   syst=""):
     '''
     Generates and runs a statement to map reads using hisat2.
@@ -51,6 +51,8 @@ def mapReadsHisat(infiles, outfile, genomepath, genomename, strand,
     syst: str
         system option to run statements on different systems    
     '''
+    job_threads = threads
+    job_memory = maxmem
     hisat =  "%s/%s" % (genomepath, genomename)
 
     # hisat makes a .log and a .met file when logging
@@ -63,6 +65,7 @@ def mapReadsHisat(infiles, outfile, genomepath, genomename, strand,
     m = -1 * (float(mismatches) * 6)
     mstring = '''--ignore-quals --score-min L,0,%s''' % m
     threads = " -p %s " % threads
+    
     if ispaired:
         in1 = infiles[0]
         in2 = infiles[1]
@@ -100,7 +103,7 @@ def mapReadsHisat(infiles, outfile, genomepath, genomename, strand,
 
 def mapReadsBowtie(infiles, outfile, genomepath, genomename, strand,
                    ispaired, options, mismatches, pref, unmapped=[],
-                   threads=1,
+                   threads=1, maxmem=1.9G,
                    syst=""):
     '''
     Generates and runs a statement to map reads using bowtie2.
@@ -138,6 +141,8 @@ def mapReadsBowtie(infiles, outfile, genomepath, genomename, strand,
     syst: str
         system option to run statements on different systems    
     '''
+    job_threads = threads
+    job_memory = maxmem
     bowtie = "%s/%s" % (genomepath, genomename)
     
     # bowtie makes a .log and a .met file when logging
@@ -187,7 +192,7 @@ def mapReadsBowtie(infiles, outfile, genomepath, genomename, strand,
 
 
 def mapReadsBowtie1(infiles, outfile, genomepath, genomename,
-                    ispaired, options, mismatches, pref, threads,
+                    ispaired, options, mismatches, pref, threads, maxmem=1.9G,
                     syst=""):
     '''
     Generates and runs a statement to map reads using bowtie1
@@ -222,6 +227,8 @@ def mapReadsBowtie1(infiles, outfile, genomepath, genomename,
     syst: str
         system option to run statements on different systems    
     '''
+    job_threads = threads
+    job_memory = maxmem
     bowtie = "%s/%s" % (genomepath, genomename)
 
     log = "logs.dir/%s_%s_mapping.log" % (pref, genomename)
@@ -243,7 +250,7 @@ def mapReadsBowtie1(infiles, outfile, genomepath, genomename,
 
 
 def filterMappedReads(infile, outfiles, ispaired, genomename, pref,
-                      q=10, syst=""):
+                      q=10, maxmem='4G', syst=""):
     '''
     Extracts unmapped reads from a bam file and converts to FASTQ
 
@@ -268,6 +275,7 @@ def filterMappedReads(infile, outfiles, ispaired, genomename, pref,
     syst: str
         system option to run statements on different systems   
     '''
+    job_memory = maxmem
     out1, out2, out3 = outfiles
     tempout = infile.replace(".bam", ".temp")
     tempout2 = infile.replace(".bam", ".temp2")
@@ -333,7 +341,6 @@ def cleanBam(infile, outfile, ispaired, pref,
         filename prefix (used for the log files)
     q: int
         minimum acceptable quality score
-        
     '''
     if ispaired == "paired":
         statement = '''samtools view -b -F4 -q%(q)s -f1 -f2 %(infile)s >\
