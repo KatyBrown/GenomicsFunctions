@@ -2,6 +2,8 @@ import pandas as pd
 import xmltodict
 import ut_functions
 import Run
+import time
+
 
 def findTaxonID(species_name, syst=""):
     '''
@@ -259,11 +261,13 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
             xdict = xmltodict.parse(y)
             break
         except:
-            if x == 10:
+            if x == 25:
                 print ("Failed to connect to NCBI: attempt %i" % x)
+                time.sleep(20)
                 break
             else:
                 x += 1
+                
                 continue
     # Parse this into a dictionary
     # This is dependent on the layout of the XML file provided by NCBI
