@@ -202,10 +202,10 @@ def getSRA(pref, ispaired, log, sra_opts,
                         statement = """
                         ascp -QT -l 300m -P33001 -i %(asperadir)s/etc/asperaweb_id_dsa.openssh era-fasp@fasp.sra.ebi.ac.uk:%(asp)s_1.fastq.gz fastqs.dir;
                         mv fastqs.dir/%(run)s_1.fastq.gz fastqs.dir/%(tempname1)s;\
-                        zcat fastqs.dir/%(tempname1)s | head -%(nrows)s > fastqs.dir/%(run)s_1.fastq;
+                        head -%(nrows)s <(zcat fastqs.dir/%(tempname1)s) > fastqs.dir/%(run)s_1.fastq;
                         ascp -QT -l 300m -P33001 -i %(asperadir)s/etc/asperaweb_id_dsa.openssh era-fasp@fasp.sra.ebi.ac.uk:%(asp)s_2.fastq.gz fastqs.dir;
                         mv fastqs.dir/%(run)s_2.fastq.gz fastqs.dir/%(tempname2)s;\
-                        zcat fastqs.dir/%(tempname2)s | head -%(nrows)s > fastqs.dir/%(run)s_2.fastq;
+                        head -%(nrows)s <(zcat fastqs.dir/%(tempname2)s) > fastqs.dir/%(run)s_2.fastq;
                         rm -rf fastqs.dir/%(tempname1)s;
                         rm -rf fastqs.dir/%(tempname2)s""" % locals()
                         statements.append(statement)
@@ -271,10 +271,10 @@ def getSRA(pref, ispaired, log, sra_opts,
                     statement = """
                     ascp -QT -l 300m -P33001 -i %(asperadir)s/etc/asperaweb_id_dsa.openssh era-fasp@fasp.sra.ebi.ac.uk:%(asp)s_1.fastq.gz fastqs.dir;
                     mv fastqs.dir/%(run)s_1.fastq.gz fastqs.dir/%(tempname1)s;\
-                    zcat fastqs.dir/%(tempname1)s | head -%(nrows)s > fastqs.dir/%(run)s_1.fastq;
+                    head -%(nrows)s <(zcat fastqs.dir/%(tempname1)s) > fastqs.dir/%(run)s_1.fastq;
                     ascp -QT -l 300m -P33001 -i %(asperadir)s/etc/asperaweb_id_dsa.openssh era-fasp@fasp.sra.ebi.ac.uk:%(asp)s_2.fastq.gz fastqs.dir;
                     mv fastqs.dir/%(run)s_2.fastq.gz fastqs.dir/%(tempname2)s;\
-                    zcat fastqs.dir/%(tempname2)s | head -%(nrows)s > fastqs.dir/%(run)s_2.fastq;
+                    head -%(nrows)s <(zcat fastqs.dir/%(tempname2)s) > fastqs.dir/%(run)s_2.fastq;
                     rm -rf fastqs.dir/%(tempname1)s;
                     rm -rf fastqs.dir/%(tempname2)s""" % locals()
                 ut_functions.writeCommand(statement, pref)
@@ -327,7 +327,7 @@ def getSRA(pref, ispaired, log, sra_opts,
                         statement = """
                         ascp -QT -l 300m -P33001 -i %(asperadir)s/etc/asperaweb_id_dsa.openssh era-fasp@fasp.sra.ebi.ac.uk:%(asp)s.fastq.gz fastqs.dir;
                         mv fastqs.dir/%(run)s.fastq.gz fastqs.dir/%(tempname)s;\
-                        zcat fastqs.dir/%(tempname)s | head -%(nrows)s > fastqs.dir/%(run)s.fastq;
+                        head -%(nrows)s <(zcat fastqs.dir/%(tempname)s) > fastqs.dir/%(run)s.fastq;
                         rm -rf fastqs.dir/%(tempname)s""" % locals()
                         statements.append(statement)
                 # concatenate the statements generated above
@@ -377,7 +377,7 @@ def getSRA(pref, ispaired, log, sra_opts,
                     statement = """
                     ascp -QT -l 300m -P33001 -i %(asperadir)s/etc/asperaweb_id_dsa.openssh era-fasp@fasp.sra.ebi.ac.uk:%(asp)s.fastq.gz fastqs.dir;
                     mv fastqs.dir/%(run)s.fastq.gz fastqs.dir/%(tempname)s;\
-                    zcat fastqs.dir/%(tempname)s | head -%(nrows)s > fastqs.dir/%(run)s.fastq;
+                    head -%(nrows)s <(zcat fastqs.dir/%(tempname)s) > fastqs.dir/%(run)s.fastq;
                     rm -rf fastqs.dir/%(tempname)s""" % locals()
                 ut_functions.writeCommand(statement, pref)
                 Run.systemRun(statement, syst)
@@ -407,8 +407,8 @@ def getSRA(pref, ispaired, log, sra_opts,
 
 
 
-def runFastQC(infiles, outfiles, pref, ispaired,
-              log, threads=4, syst=""):
+def runFastQC(infiles, outfiles, pref, ispaired, log, threads=4,
+              syst=""):
     '''
     Generates a statement and runs FastQC
     

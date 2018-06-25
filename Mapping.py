@@ -13,7 +13,7 @@ import Run
 
 def mapReadsHisat(infiles, outfile, genomepath, genomename, strand,
                   ispaired, options, mismatches, pref, unmapped=[],
-                  threads=1, maxmem=3.9G,
+                  threads=1, maxmem="3.9G",
                   syst=""):
     '''
     Generates and runs a statement to map reads using hisat2.
@@ -53,7 +53,7 @@ def mapReadsHisat(infiles, outfile, genomepath, genomename, strand,
     '''
     job_threads = threads
     job_memory = maxmem
-    hisat =  "%s/%s" % (genomepath, genomename)
+    hisat =  "%s/%s/hisat/%s" % (genomepath, genomename, genomename)
 
     # hisat makes a .log and a .met file when logging
     log = "logs.dir/%s_%s_mapping.log" % (pref, genomename)
@@ -103,7 +103,7 @@ def mapReadsHisat(infiles, outfile, genomepath, genomename, strand,
 
 def mapReadsBowtie(infiles, outfile, genomepath, genomename, strand,
                    ispaired, options, mismatches, pref, unmapped=[],
-                   threads=1, maxmem=1.9G,
+                   threads=1, maxmem="1.9G",
                    syst=""):
     '''
     Generates and runs a statement to map reads using bowtie2.
@@ -143,7 +143,7 @@ def mapReadsBowtie(infiles, outfile, genomepath, genomename, strand,
     '''
     job_threads = threads
     job_memory = maxmem
-    bowtie = "%s/%s" % (genomepath, genomename)
+    bowtie = "%s/%s/bowtie/%s" % (genomepath, genomename, genomename)
     
     # bowtie makes a .log and a .met file when logging
     log = "logs.dir/%s_%s_mapping.log" % (pref, genomename)
@@ -192,7 +192,7 @@ def mapReadsBowtie(infiles, outfile, genomepath, genomename, strand,
 
 
 def mapReadsBowtie1(infiles, outfile, genomepath, genomename,
-                    ispaired, options, mismatches, pref, threads, maxmem=1.9G,
+                    ispaired, options, mismatches, pref, threads, maxmem="1.9G",
                     syst=""):
     '''
     Generates and runs a statement to map reads using bowtie1
@@ -229,7 +229,7 @@ def mapReadsBowtie1(infiles, outfile, genomepath, genomename,
     '''
     job_threads = threads
     job_memory = maxmem
-    bowtie = "%s/%s" % (genomepath, genomename)
+    bowtie = "%s/%s/bowtie/%s" % (genomepath, genomename, genomename)
 
     log = "logs.dir/%s_%s_mapping.log" % (pref, genomename)
 

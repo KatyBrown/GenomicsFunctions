@@ -254,11 +254,13 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
         # this query often seems to fail for no reason - keep trying
         # until it doesn't or for 10 tries
         try:
-            statement = 'efetch -db sra -id %s -format xml' % ID
+            statement = 'efetch -db sra -id %s -format xml > %s.xml' % (ID, ID)
             if log == "on":
                  ut_functions.writeCommand(statement, ID)
-            y = "\n".join(Run.systemPopen(statement, syst))
-            xdict = xmltodict.parse(y)
+            
+            Run.systemRun(statement, syst)
+            with open("%s.xml" % ID, 'rb') as fd:
+                xdict = xmltodict.parse(fd)                   
             break
         except:
             if x == 25:
@@ -269,6 +271,7 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
                 x += 1
                 
                 continue
+
     # Parse this into a dictionary
     # This is dependent on the layout of the XML file provided by NCBI
     d = xdict['EXPERIMENT_PACKAGE_SET']['EXPERIMENT_PACKAGE']
