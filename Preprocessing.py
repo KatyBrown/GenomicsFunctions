@@ -407,8 +407,8 @@ def getSRA(pref, ispaired, log, sra_opts,
 
 
 
-def runFastQC(infiles, outfiles, pref, ispaired, threads=4,
-              log, syst=""):
+def runFastQC(infiles, outfiles, pref, ispaired,
+              log, threads=4, syst=""):
     '''
     Generates a statement and runs FastQC
     
