@@ -441,7 +441,6 @@ def runFastQC(infiles, outfiles, pref, ispaired, log, threads=4,
         # statement to run fastqc and unzip the output
         statement = '''fastqc %(in1)s %(in2)s \
         -o fastqc.dir -threads %(threads)i &>%(log)s;
-        unzip %(out1)s -d fastqc.dir;\
         unzip %(out2)s -d fastqc.dir''' % locals()
         pathlib.Path(outfiles[2]).touch()
     else:
