@@ -174,7 +174,7 @@ def findFamilyGenus(taxonid, nodespath, syst=""):
 
 
 def getMetadataSRA(ID, genomesdir, nodespath, outfile,
-                   log="on", syst=""):
+                   log="on", syst="", check=True):
     '''
     Retrieves metadata for an SRA ID.
     
@@ -423,16 +423,19 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
             taxonid = "6687"
         
         # check that the reference genome is available locally
-        assert taxonid in species, "Host %s reference genome exists but not found" % sciname
+        if check:
+            assert taxonid in species, "Host %s reference genome exists but not found" % sciname
         reference = sciname
     elif reftype == "G":
         # check that the reference genome is available locally
-        assert genusID in gdict, "Genus %s reference genome exists but not found"  % genus
+        if check:
+            assert genusID in gdict, "Genus %s reference genome exists but not found"  % genus
         reference = gdict[genusID]
         
     elif reftype == "F":
         # check that the reference genome is available locally
-        assert familyID in fdict, "Family %s reference genome exists but not found" % family
+        if check:
+            assert familyID in fdict, "Family %s reference genome exists but not found" % family
         reference = fdict[familyID]
     # Store the appropriate reference in the Reference column
     results['Reference'] = reference
