@@ -86,7 +86,7 @@ def getSRA(pref, ispaired, log, sra_opts,
                         zcat fastqs.dir/%(tempname1)s | head -%(nrows)s > fastqs.dir/%(run)s_1.fastq;
                         ascp -QT -l 300m -P33001 -i %(asperadir)s/etc/asperaweb_id_dsa.openssh era-fasp@fasp.sra.ebi.ac.uk:%(asp)s_2.fastq.gz fastqs.dir;
                         mv fastqs.dir/%(run)s_2.fastq.gz fastqs.dir/%(tempname2)s;\
-                        zcat fastqs.dir/%(tempname1)s | head -%(nrows)s > fastqs.dir/%(run)s_2.fastq;
+                        zcat fastqs.dir/%(tempname2)s | head -%(nrows)s > fastqs.dir/%(run)s_2.fastq;
                         rm -rf fastqs.dir/%(tempname1)s;
                         rm -rf fastqs.dir/%(tempname2)s""" % locals()
                         statements.append(statement)
@@ -138,7 +138,7 @@ def getSRA(pref, ispaired, log, sra_opts,
                     zcat fastqs.dir/%(tempname1)s | head -%(nrows)s > fastqs.dir/%(run)s_1.fastq;
                     ascp -QT -l 300m -P33001 -i %(asperadir)s/etc/asperaweb_id_dsa.openssh era-fasp@fasp.sra.ebi.ac.uk:%(asp)s_2.fastq.gz fastqs.dir;
                     mv fastqs.dir/%(run)s_2.fastq.gz fastqs.dir/%(tempname2)s;\
-                    zcat fastqs.dir/%(tempname1)s | head -%(nrows)s > fastqs.dir/%(run)s_2.fastq;
+                    zcat fastqs.dir/%(tempname2)s | head -%(nrows)s > fastqs.dir/%(run)s_2.fastq;
                     rm -rf fastqs.dir/%(tempname1)s;
                     rm -rf fastqs.dir/%(tempname2)s""" % locals()
                 ut_functions.writeCommand(statement, pref)
@@ -249,13 +249,13 @@ def runFastQC(infiles, outfiles, pref, ispaired, log, syst=""):
         out1 = outfiles[0].replace(".html", ".zip")
         out2 = outfiles[1].replace(".html", ".zip")
         statement = '''fastqc %(in1)s %(in2)s \
-        -o fastqc.dir &>%(log)s; unzip %(out1)s -d fastqc.dir;\
+        -o fastqc.dir &>%(log)s -t 4; unzip %(out1)s -d fastqc.dir;\
         unzip %(out2)s -d fastqc.dir''' % locals()
         pathlib.Path(outfiles[2]).touch()
     else:
         in1 = infiles[2]
         out1 = outfiles[2].replace(".html", ".zip")
-        statement = '''fastqc %(in1)s -o fastqc.dir &>%(log)s;\
+        statement = '''fastqc %(in1)s -o fastqc.dir -t 4 &>%(log)s;\
         unzip %(out1)s -d fastqc.dir''' % locals()
         pathlib.Path(outfiles[0]).touch()
         pathlib.Path(outfiles[1]).touch()

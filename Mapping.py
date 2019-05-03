@@ -43,7 +43,7 @@ def mapReadsHisat(infiles, outfile, genomepath, genomename, strand,
             unmapped_str = ""
         statement = '''hisat2 -x %(hisat)s %(strand)s -1 %(in1)s -2 %(in2)s \
         %(mstring)s --met-file %(met)s %(options)s %(unmapped_str)s %(threads)s 2>%(log)s|\
-        samtools view -b > %(outfile)s''' % locals()
+        samtools view -F4 -b > %(outfile)s''' % locals()
     else:
         in1 = infiles[2]
         if len(unmapped) != 0:
@@ -53,7 +53,7 @@ def mapReadsHisat(infiles, outfile, genomepath, genomename, strand,
             unmapped_str = ""
         statement = '''hisat2 -x %(hisat)s %(strand)s -U %(in1)s \
         %(mstring)s --met-file %(met)s %(options)s %(unmapped_str)s %(threads)s 2>%(log)s|\
-        samtools view -b > %(outfile)s''' % locals()
+        samtools view -F4 -b > %(outfile)s''' % locals()
     ut_functions.writeCommand(statement, pref)
     Run.systemRun(statement, syst)
     for u in unmapped:
@@ -89,7 +89,7 @@ def mapReadsBowtie(infiles, outfile, genomepath, genomename, strand,
             unmapped_str = ""
         statement = '''bowtie2 -x %(bowtie)s -1 %(in1)s -2 %(in2)s \
         --met-file %(met)s %(options)s %(unmapped_str)s %(threads)s %(mstring)s 2>%(log)s|\
-        samtools view -b > %(outfile)s''' % locals()
+        samtools view -F4 -b > %(outfile)s''' % locals()
     else:
         in1 = infiles[2]
         if len(unmapped) != 0:
@@ -99,7 +99,7 @@ def mapReadsBowtie(infiles, outfile, genomepath, genomename, strand,
             unmapped_str = ""
         statement = '''bowtie2 -x %(bowtie)s -U %(in1)s \
         --met-file %(met)s %(options)s %(unmapped_str)s %(threads)s %(mstring)s 2>%(log)s|\
-        samtools view -b > %(outfile)s''' % locals()
+        samtools view -F4 -b > %(outfile)s''' % locals()
         
     ut_functions.writeCommand(statement, pref)
     Run.systemRun(statement, syst)
@@ -125,12 +125,12 @@ def mapReadsBowtie1(infiles, outfile, genomepath, genomename, strand,
         statement = '''bowtie -S -q %(bowtie)s \
         -1 %(in1)s -2 %(in2)s \
          %(options)s -v %(mismatches)s  2>%(log)s|\
-        samtools view -b > %(outfile)s''' % locals()
+        samtools view -F4 -b > %(outfile)s''' % locals()
     else:
         in1 = infiles[2]
         statement = '''bowtie -S -q %(bowtie)s %(in1)s \
         %(options)s -v %(mismatches)s 2>%(log)s|\
-        samtools view -b > %(outfile)s''' % locals()
+        samtools view -F4 -b > %(outfile)s''' % locals()
     ut_functions.writeCommand(statement, pref)
     Run.systemRun(statement, syst)
 
