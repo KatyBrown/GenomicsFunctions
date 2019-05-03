@@ -5,32 +5,38 @@ import glob
 import xmltodict
 import ut_functions
 import Run
+import time
 
 def findTaxonID(species_name, syst=""):
     '''
     Return the taxonomy ID for a species name
     '''
-    statement = 'esearch -db taxonomy -query "%s" \
-                 | efetch' % species_name
-    L = Run.systemPopen(statement, syst)
-    if len(L) == 0:
-        return "000"
-    else:
-        return L[0]
-
+    i = 0
+    while True:
+        statement = 'esearch -db taxonomy -query "%s" \
+        | efetch' % species_name
+        L = Run.systemPopen(statement, syst)
+        if len(L) == 0 and i > 50:
+            return "000"
+        elif len(L) > 0:
+            return L[0]
+        i += 1
 
 def findTaxonName(taxid, syst=""):
     '''
     Return the scientific name for a taxonomy ID
     '''
-    statement = '''efetch -db taxonomy -id %s -format xml | \
-                    xtract -pattern ScientificName \
-                    -element ScientificName''' % taxid
-    L = Run.systemPopen(statement, syst)
-    if len(L) == 0:
-        return "000"
-    else:
-        return L[0]
+    i = 0
+    while True:
+        statement = '''efetch -db taxonomy -id %s -format xml | \
+        xtract -pattern ScientificName \
+        -element ScientificName''' % taxid
+        L = Run.systemPopen(statement, syst)
+        if len(L) == 0 and i > 50:
+            return "000"
+        elif len(L) != 0:
+            return L[0]
+        i += 1
 
 
 def findFamilyGenus(taxonid, nodespath, syst=""):
@@ -112,29 +118,43 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
         # Retrieve the full XML record for the ID
         # this query often seems to fail for no reason - keep trying
         # until it doesn't or for 10 tries
+        s1 = 'efetch -db sra -format xml -id %s' % ID
+        s2 = 'esearch -db sra -query %s | efetch -format xml' % ID
         try:
-            statement = 'efetch -db sra -id %s -format xml' % ID
+            if x < 5:
+                statement = s1
+            else:
+                statement = s2
             if log == "on":
                  ut_functions.writeCommand(statement, ID)
-            y = "\n".join(Run.systemPopen(statement, syst))
+            y = "\n".join(Run.systemPopen(statement, syst)).replace("</CENTER_NAME-->", "")
             xdict = xmltodict.parse(y)
             break
         except:
-            if x == 10:
+            if x == 100:
                 print ("Failed to connect to NCBI: attempt %i" % x)
-                break
+                raise SystemExit
             else:
+                time.sleep(10)
                 x += 1
                 continue
     # Parse this into a dictionary
     d = xdict['EXPERIMENT_PACKAGE_SET']['EXPERIMENT_PACKAGE']
-    experiment = d['EXPERIMENT']
+    try:
+        experiment = d['EXPERIMENT']
+    except:
+        d = d[0]
+        experiment = d['EXPERIMENT']
     expid = experiment['@accession']
     sample = d['SAMPLE']
     libtype = experiment['DESIGN']['LIBRARY_DESCRIPTOR']['LIBRARY_STRATEGY']
     pe = experiment['DESIGN']['LIBRARY_DESCRIPTOR']['LIBRARY_LAYOUT']
     taxonid = sample['SAMPLE_NAME']['TAXON_ID']
-    sciname = sample['SAMPLE_NAME']['SCIENTIFIC_NAME']
+    if 'SCIENTIFIC_NAME' in sample['SAMPLE_NAME']:
+        sciname = sample['SAMPLE_NAME']['SCIENTIFIC_NAME']
+    else:
+        taxid = int(sample['SAMPLE_NAME']['TAXON_ID'])
+        sciname = findTaxonName(taxid)
     biosample = sample['@accession']
     title = experiment['TITLE']
     spots = d['Pool']['Member']['@spots']
@@ -176,36 +196,57 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
     results['GenusID'] = genusID
     results['Family'] = family
     results['Genus'] = genus
-    statement = '''esearch -db assembly -query "txid%s[Organism]" | \
-                 efetch -format uilist''' % taxonid
-    if log == "on":
-        ut_functions.writeCommand(statement, ID)
-    x = Run.systemPopen(statement, syst)
-    if len(x) >= 1:
-        reftype = "H"
-    else:
-        statement = '''esearch -db assembly -query "txid%s[Organism]" \
-                      | efetch -format uilist''' % genusID
+    i = 0
+    while True:
+        statement = '''esearch -db assembly -query "txid%s[Organism]" | \
+        efetch -format uilist''' % taxonid
         if log == "on":
             ut_functions.writeCommand(statement, ID)
         x = Run.systemPopen(statement, syst)
-        if len(x) >= 1 and not genus.endswith("dae"):
-            reftype = "G"
-        else:
-            if genus.endswith("dae"):
-                family = genus
-                familyID = genusID
-            statement = '''esearch -db assembly \
-                          -query "txid%s[Organism]" \
-                          | efetch -format uilist''' % familyID
+        if len(x) >= 1:
+            reftype = "H"
+            break
+        elif i > 50:
+            reftype = "X"
+            break
+        i += 1
+    if reftype == "X":
+        i = 0
+        while True:
+            statement = '''esearch -db assembly -query "txid%s[Organism]" \
+            | efetch -format uilist''' % genusID
             if log == "on":
                 ut_functions.writeCommand(statement, ID)
             x = Run.systemPopen(statement, syst)
-            if len(x) >= 1:
-                reftype = "F"
-            else:
-                reftype = "N"
-                reference = "X"
+            if len(x) >= 1 and not genus.endswith("dae"):
+                reftype = "G"
+                break
+            elif len(x) > 1 and genus.endswith("dae"):
+                reftype = "X"
+                family = genus
+                familyID = genusID
+                break
+            elif i > 50:
+                reftype = "X"
+                break
+            i += 1
+        if reftype == "X":
+            i = 0
+            while True:
+                statement = '''esearch -db assembly \
+                -query "txid%s[Organism]" \
+                | efetch -format uilist''' % familyID
+                if log == "on":
+                    ut_functions.writeCommand(statement, ID)
+                x = Run.systemPopen(statement, syst)
+                if len(x) >= 1:
+                    reftype = "F"
+                    break
+                elif i > 50:
+                    reftype = "N"
+                    reference = "X"
+                    break
+                i += 1
     results['Reference_Type'] = reftype
 
     if reftype == "H":
@@ -239,6 +280,12 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
         if sciname == "Penaeus":
             sciname = "Penaeus_monodon"
             taxonid = "6687"
+        if sciname == "Ixodes scapularis + Ehrlichia sp.":
+            sciname = "Ixodes_scapularis"
+            taxonid = "6945"
+        if sciname == "L. boulardi":
+            sciname = "Leptopilina_boulardi"
+            taxonid = "63433"
         
         assert taxonid in species, "Host %s reference genome exists but not found" % sciname
         reference = sciname
@@ -247,6 +294,8 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
         reference = gdict[genusID]
         
     elif reftype == "F":
+        if familyID == "6913":
+            familyID = "450948"
         assert familyID in fdict, "Family %s reference genome exists but not found" % family
         reference = fdict[familyID]
     results['Reference'] = reference
