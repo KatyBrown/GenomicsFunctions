@@ -13,7 +13,7 @@ import Run
 
 def mapReadsHisat(infiles, outfile, genomepath, genomename, strand,
                   ispaired, options, mismatches, pref, unmapped=[],
-                  threads=1, maxmem="3.9G",
+                  threads=1, double=False, maxmem="3.9G",
                   syst=""):
     '''
     Generates and runs a statement to map reads using hisat2.
@@ -51,9 +51,12 @@ def mapReadsHisat(infiles, outfile, genomepath, genomename, strand,
     syst: str
         system option to run statements on different systems    
     '''
+    if double:
+        hisat = "%s/%s/hisat/%s" % (genomepath, genomename, genomename)
+    else:
+        hisat = "%s/hisat/%s" % (genomepath, genomename)
     job_threads = threads
     job_memory = maxmem
-    hisat =  "%s/%s/hisat/%s" % (genomepath, genomename, genomename)
 
     # hisat makes a .log and a .met file when logging
     log = "logs.dir/%s_%s_mapping.log" % (pref, genomename)
@@ -103,7 +106,7 @@ def mapReadsHisat(infiles, outfile, genomepath, genomename, strand,
 
 def mapReadsBowtie(infiles, outfile, genomepath, genomename, strand,
                    ispaired, options, mismatches, pref, unmapped=[],
-                   threads=1, maxmem="1.9G",
+                   threads=1, maxmem="1.9G", double=False,
                    syst=""):
     '''
     Generates and runs a statement to map reads using bowtie2.
@@ -141,13 +144,19 @@ def mapReadsBowtie(infiles, outfile, genomepath, genomename, strand,
     syst: str
         system option to run statements on different systems    
     '''
+    if double is True:
+        bowtie = "%s/%s/bowtie/%s" % (genomepath, genomename)
+    elif double is "exact":
+        bowtie = genomepath
+    else:
+        bowtie = "%s/bowtie/%s" % (genomepath, genomename)
+
     job_threads = threads
     job_memory = maxmem
-    bowtie = "%s/%s/bowtie/%s" % (genomepath, genomename, genomename)
     
     # bowtie makes a .log and a .met file when logging
     log = "logs.dir/%s_%s_mapping.log" % (pref, genomename)
-    met = "logs.dir/%s_%s_mapping.met" % (met, genomename)
+    met = "logs.dir/%s_%s_mapping.met" % (pref, genomename)
 
     # In ignore-quals mode, by default, each mismatch give a penalty of 6
     # so for 8 mismatches this would be a minimum score of 48.
@@ -192,7 +201,8 @@ def mapReadsBowtie(infiles, outfile, genomepath, genomename, strand,
 
 
 def mapReadsBowtie1(infiles, outfile, genomepath, genomename,
-                    ispaired, options, mismatches, pref, threads, maxmem="1.9G",
+                    ispaired, options, mismatches, pref, threads, double=False,
+                    maxmem="1.9G",
                     syst=""):
     '''
     Generates and runs a statement to map reads using bowtie1
@@ -227,18 +237,23 @@ def mapReadsBowtie1(infiles, outfile, genomepath, genomename,
     syst: str
         system option to run statements on different systems    
     '''
+    if double is True:
+        bowtie = "%s/%s/bowtie1/%s"
+    elif double is "exact":
+        bowtie = genomepath
+    else:
+        bowtie = "%s/bowtie1/%s" % (genomepath, genomename)
     job_threads = threads
     job_memory = maxmem
-    bowtie = "%s/%s/bowtie/%s" % (genomepath, genomename, genomename)
 
     log = "logs.dir/%s_%s_mapping.log" % (pref, genomename)
+    met = "logs.dir/%s_%s_mapping.met" % (pref, genomename)
 
     if ispaired:
         in1 = infiles[0]
         in2 = infiles[1]
         statement = '''bowtie -S -q %(bowtie)s \
         -1 %(in1)s -2 %(in2)s \
-<<<<<<< HEAD
          %(options)s -v %(mismatches)s  2>%(log)s|\
         samtools view -F4 -b > %(outfile)s''' % locals()
     else:

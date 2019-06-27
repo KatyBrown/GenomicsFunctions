@@ -514,6 +514,8 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
             assert taxonid in species, "Host %s reference genome exists but not found" % sciname
         reference = sciname
     elif reftype == "G":
+        if genus == "Penaeus":
+            genusID = "133894"
         # check that the reference genome is available locally
         if check:
             assert genusID in gdict, "Genus %s reference genome exists but not found"  % genus
