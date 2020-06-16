@@ -167,7 +167,7 @@ def getSRA(pref, ispaired, log, sra_opts,
                     if sra == "ncbi":
                         # runs ncbi fastq-dump
                         statement = '''fastq-dump %(nreads_download)s %(sra_opts)s \
-                        --split-files -v \
+                        --split-files \
                         --outdir fastqs.dir &>>%(log)s\
                         %(run)s ''' % locals()
                         statements.append(statement)
@@ -240,7 +240,7 @@ def getSRA(pref, ispaired, log, sra_opts,
                 if sra == "ncbi":
                     # runs ncbi fastq-dump
                     statement = '''fastq-dump %(nspots)s %(sra_opts)s \
-                    --split-files --gzip -v \
+                    --split-files --gzip \
                     --outdir fastqs.dir &>>%(log)s\
                     %(pref)s ''' % locals()
                 elif sra == "ebi":
@@ -300,7 +300,6 @@ def getSRA(pref, ispaired, log, sra_opts,
                     if sra == "ncbi":
                         # runs ncbi fastq-dump
                         statement = '''fastq-dump %(nspots)s %(sra_opts)s \
-                         -v \
                         --outdir fastqs.dir &>>%(log)s\
                         %(run)s ''' % locals()
                         statements.append(statement)
@@ -353,7 +352,7 @@ def getSRA(pref, ispaired, log, sra_opts,
                 if sra == "ncbi":
                     # runs ncbi fastq-dump
                     statement = '''fastq-dump %(nspots)s %(sra_opts)s \
-                    --gzip -v \
+                    --gzip \
                     --outdir fastqs.dir %(pref)s &>%(log)s''' % locals()
                 elif sra == "ebi":
                     # downloads from EBI ftp site using curl
@@ -441,13 +440,14 @@ def runFastQC(infiles, outfiles, pref, ispaired, log, threads=4,
         # statement to run fastqc and unzip the output
         statement = '''fastqc %(in1)s %(in2)s \
         -o fastqc.dir -threads %(threads)i &>%(log)s;
+        unzip %(out1)s -d fastqc.dir;
         unzip %(out2)s -d fastqc.dir''' % locals()
         pathlib.Path(outfiles[2]).touch()
     else:
         in1 = infiles[2]
         out1 = outfiles[2].replace(".html", ".zip")
         # statement to run fastqc and unzip the output
-        statement = '''fastqc %(in1)s -o fastqc.dir
+        statement = '''fastqc %(in1)s -o fastqc.dir \
         -threads %(threads)i &>%(log)s;\
         unzip %(out1)s -d fastqc.dir''' % locals()
         pathlib.Path(outfiles[0]).touch()

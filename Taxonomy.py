@@ -26,6 +26,7 @@ def findTaxonID(species_name, syst=""):
     '''
 
     i = 0
+    species_name = species_name.replace("_", " ")
     while True:
         statement = 'esearch -db taxonomy -query "%s" \
         | efetch' % species_name
@@ -116,6 +117,8 @@ def findFamilyGenus(taxonid, nodespath, syst=""):
     # remove tabs from columns
     tab[2] = tab[2].str.replace("\t", "")
     # take the row of the table corresponding to this taxon id
+    if taxonid == "":
+        taxonid = "000"
     x = tab[tab[0] == int(taxonid)]
     # rank of current taxon ID
     types = set(x[2].values)
@@ -249,6 +252,7 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
         species.append(g[1])
         genus.append(g[3])
         family.append(g[5])
+    print (species)
     # allows for SRA datasets with no species ID
     species.append("000")
     # store the family and the genus of each reference in a dictionary
@@ -303,10 +307,14 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
     taxonid = sample['SAMPLE_NAME']['TAXON_ID']
 
     if 'SCIENTIFIC_NAME' in sample['SAMPLE_NAME']:
-        sciname = sample['SAMPLE_NAME']['SCIENTIFIC_NAME']
+        sciname= "_".join(sample['SAMPLE_NAME']['SCIENTIFIC_NAME'].replace(" ", "_").split("_")[:2])
+        sciname = sciname.replace(" ", "_")
+        taxonid = findTaxonID(sciname)
     else:
         taxid = int(sample['SAMPLE_NAME']['TAXON_ID'])
-        sciname = findTaxonName(taxid)
+        sciname = "_".join(findTaxonName(taxid).replace(" ", "_").split("_")[:2])
+        sciname = sciname.replace(" ", "_")
+        taxonid = findTaxonID(sciname)
 
 
     # Biosample
@@ -314,7 +322,10 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
     # Title
     title = experiment['TITLE']
     # Spots
-    spots = d['Pool']['Member']['@spots']
+    try:
+        spots = d['Pool']['Member']['@spots']
+    except:
+        spots = 0
 
     # There might be multiple runs for a single experiment or sample ID
     runs = d['RUN_SET']['RUN']
@@ -508,7 +519,16 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
         if sciname == "L. boulardi":
             sciname = "Leptopilina_boulardi"
             taxonid = "63433"
-        
+        if sciname == "Pleurobrachia_":
+            sciname = "Pleurobrachia_bachei"
+            taxonid = "34499"
+        if "metagenome" in sciname or "mixed" in sciname:
+            sciname = "X"
+            taxonid = "000"
+        taxonid = str(taxonid)
+        genusID = str(genusID)
+        familyID = str(familyID)
+        print (taxonid)
         # check that the reference genome is available locally
         if check:
             assert taxonid in species, "Host %s reference genome exists but not found" % sciname
@@ -518,8 +538,13 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
             genusID = "133894"
         # check that the reference genome is available locally
         if check:
-            assert genusID in gdict, "Genus %s reference genome exists but not found"  % genus
-        reference = gdict[genusID]
+            if genus != "Limacina":
+                assert genusID in gdict, "Genus %s reference genome exists but not found"  % genus
+        if genusID in gdict:
+            reference = gdict[genusID]
+        else:
+            reference = "000"
+        
         
     elif reftype == "F":
 
@@ -528,8 +553,12 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
 
         # check that the reference genome is available locally
         if check:
-            assert familyID in fdict, "Family %s reference genome exists but not found" % family
-        reference = fdict[familyID]
+            if family != "Limacinidae":
+                assert familyID in fdict, "Family %s reference genome exists but not found" % family
+        if familyID in fdict:
+            reference = fdict[familyID]
+        else:
+            reference = "000"
     # Store the appropriate reference in the Reference column
     results['Reference'] = reference
     # Save the dataframe

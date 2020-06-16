@@ -5,6 +5,6 @@ def getApiKey():
     return (params['api_key'])
 
 def fixStatement(statement, syst=""):
-    statement = statement.replace("esearch ", "esearch -api %s " % getApiKey())
-    statement = statement.replace("efetch ", "efetch -api %s " % getApiKey())
+    # statement = statement.replace("esearch ", "esearch -api %s " % getApiKey())
+    # statement = statement.replace("efetch ", "efetch -api %s " % getApiKey())
     return (statement)
