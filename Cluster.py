@@ -125,7 +125,6 @@ def clusterCyclesSW(infile, outfile_prefix, outpath, final_out, batchsize=200,
         # the batches need to be quite big or nothing will cluster
         nbatches = len(currentF) / batchsize
         F_L = ut_functions.batchFasta(currentF, nbatches)
-        print (len(currentF), F_L)
         n = 1
         Cdict = dict()
         # for each batch of sequences
@@ -163,7 +162,6 @@ def clusterCyclesSW(infile, outfile_prefix, outpath, final_out, batchsize=200,
             cdict = dict()
             # for each cluster
             for cc in ccs:
-                print (cc)
                 # put all the sequences from the cluster into an output file
                 out = open("%s/%s_%s_%i.fasta" % (outpath, outfile_prefix, n+1, p), "w")
                 m = 0
@@ -377,7 +375,7 @@ def expandClusters(infile_fasta, infile_clusters,
     bigF = dict()
     for line in clusters:
         line = line.strip().split("\t")
-        if "_samples_" in line[0]:
+        if "~" in line[0]:
             D[line[0]] = line[1]
             D2.setdefault("%s_cons" % line[1], [])
             D2['%s_cons' % line[1]].append(line[0])
