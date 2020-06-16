@@ -167,7 +167,7 @@ def getSRA(pref, ispaired, log, sra_opts,
                     if sra == "ncbi":
                         # runs ncbi fastq-dump
                         statement = '''fastq-dump %(nreads_download)s %(sra_opts)s \
-                        --split-files -v \
+                        --split-files \
                         --outdir fastqs.dir &>>%(log)s\
                         %(run)s ''' % locals()
                         statements.append(statement)
@@ -202,10 +202,10 @@ def getSRA(pref, ispaired, log, sra_opts,
                         statement = """
                         ascp -QT -l 300m -P33001 -i %(asperadir)s/etc/asperaweb_id_dsa.openssh era-fasp@fasp.sra.ebi.ac.uk:%(asp)s_1.fastq.gz fastqs.dir;
                         mv fastqs.dir/%(run)s_1.fastq.gz fastqs.dir/%(tempname1)s;\
-                        head -%(nrows)s <(zcat fastqs.dir/%(tempname1)s) > fastqs.dir/%(run)s_1.fastq;
+                        zcat fastqs.dir/%(tempname1)s | head -%(nrows)s > fastqs.dir/%(run)s_1.fastq;
                         ascp -QT -l 300m -P33001 -i %(asperadir)s/etc/asperaweb_id_dsa.openssh era-fasp@fasp.sra.ebi.ac.uk:%(asp)s_2.fastq.gz fastqs.dir;
                         mv fastqs.dir/%(run)s_2.fastq.gz fastqs.dir/%(tempname2)s;\
-                        head -%(nrows)s <(zcat fastqs.dir/%(tempname2)s) > fastqs.dir/%(run)s_2.fastq;
+                        zcat fastqs.dir/%(tempname2)s | head -%(nrows)s > fastqs.dir/%(run)s_2.fastq;
                         rm -rf fastqs.dir/%(tempname1)s;
                         rm -rf fastqs.dir/%(tempname2)s""" % locals()
                         statements.append(statement)
@@ -240,7 +240,7 @@ def getSRA(pref, ispaired, log, sra_opts,
                 if sra == "ncbi":
                     # runs ncbi fastq-dump
                     statement = '''fastq-dump %(nspots)s %(sra_opts)s \
-                    --split-files --gzip -v \
+                    --split-files --gzip \
                     --outdir fastqs.dir &>>%(log)s\
                     %(pref)s ''' % locals()
                 elif sra == "ebi":
@@ -271,10 +271,10 @@ def getSRA(pref, ispaired, log, sra_opts,
                     statement = """
                     ascp -QT -l 300m -P33001 -i %(asperadir)s/etc/asperaweb_id_dsa.openssh era-fasp@fasp.sra.ebi.ac.uk:%(asp)s_1.fastq.gz fastqs.dir;
                     mv fastqs.dir/%(run)s_1.fastq.gz fastqs.dir/%(tempname1)s;\
-                    head -%(nrows)s <(zcat fastqs.dir/%(tempname1)s) > fastqs.dir/%(run)s_1.fastq;
+                    zcat fastqs.dir/%(tempname1)s | head -%(nrows)s > fastqs.dir/%(run)s_1.fastq;
                     ascp -QT -l 300m -P33001 -i %(asperadir)s/etc/asperaweb_id_dsa.openssh era-fasp@fasp.sra.ebi.ac.uk:%(asp)s_2.fastq.gz fastqs.dir;
                     mv fastqs.dir/%(run)s_2.fastq.gz fastqs.dir/%(tempname2)s;\
-                    head -%(nrows)s <(zcat fastqs.dir/%(tempname2)s) > fastqs.dir/%(run)s_2.fastq;
+                    zcat fastqs.dir/%(tempname2)s | head -%(nrows)s  > fastqs.dir/%(run)s_2.fastq;
                     rm -rf fastqs.dir/%(tempname1)s;
                     rm -rf fastqs.dir/%(tempname2)s""" % locals()
                 ut_functions.writeCommand(statement, pref)
@@ -300,7 +300,6 @@ def getSRA(pref, ispaired, log, sra_opts,
                     if sra == "ncbi":
                         # runs ncbi fastq-dump
                         statement = '''fastq-dump %(nspots)s %(sra_opts)s \
-                         -v \
                         --outdir fastqs.dir &>>%(log)s\
                         %(run)s ''' % locals()
                         statements.append(statement)
@@ -327,7 +326,7 @@ def getSRA(pref, ispaired, log, sra_opts,
                         statement = """
                         ascp -QT -l 300m -P33001 -i %(asperadir)s/etc/asperaweb_id_dsa.openssh era-fasp@fasp.sra.ebi.ac.uk:%(asp)s.fastq.gz fastqs.dir;
                         mv fastqs.dir/%(run)s.fastq.gz fastqs.dir/%(tempname)s;\
-                        head -%(nrows)s <(zcat fastqs.dir/%(tempname)s) > fastqs.dir/%(run)s.fastq;
+                        zcat fastqs.dir/%(tempname)s | head -%(nrows)s > fastqs.dir/%(run)s.fastq;
                         rm -rf fastqs.dir/%(tempname)s""" % locals()
                         statements.append(statement)
                 # concatenate the statements generated above
@@ -353,7 +352,7 @@ def getSRA(pref, ispaired, log, sra_opts,
                 if sra == "ncbi":
                     # runs ncbi fastq-dump
                     statement = '''fastq-dump %(nspots)s %(sra_opts)s \
-                    --gzip -v \
+                    --gzip \
                     --outdir fastqs.dir %(pref)s &>%(log)s''' % locals()
                 elif sra == "ebi":
                     # downloads from EBI ftp site using curl
@@ -377,7 +376,7 @@ def getSRA(pref, ispaired, log, sra_opts,
                     statement = """
                     ascp -QT -l 300m -P33001 -i %(asperadir)s/etc/asperaweb_id_dsa.openssh era-fasp@fasp.sra.ebi.ac.uk:%(asp)s.fastq.gz fastqs.dir;
                     mv fastqs.dir/%(run)s.fastq.gz fastqs.dir/%(tempname)s;\
-                    head -%(nrows)s <(zcat fastqs.dir/%(tempname)s) > fastqs.dir/%(run)s.fastq;
+                    zcat fastqs.dir/%(tempname)s | head -%(nrows)s  > fastqs.dir/%(run)s.fastq;
                     rm -rf fastqs.dir/%(tempname)s""" % locals()
                 ut_functions.writeCommand(statement, pref)
                 Run.systemRun(statement, syst)
@@ -441,13 +440,14 @@ def runFastQC(infiles, outfiles, pref, ispaired, log, threads=4,
         # statement to run fastqc and unzip the output
         statement = '''fastqc %(in1)s %(in2)s \
         -o fastqc.dir -threads %(threads)i &>%(log)s;
+        unzip %(out1)s -d fastqc.dir;
         unzip %(out2)s -d fastqc.dir''' % locals()
         pathlib.Path(outfiles[2]).touch()
     else:
         in1 = infiles[2]
         out1 = outfiles[2].replace(".html", ".zip")
         # statement to run fastqc and unzip the output
-        statement = '''fastqc %(in1)s -o fastqc.dir
+        statement = '''fastqc %(in1)s -o fastqc.dir \
         -threads %(threads)i &>%(log)s;\
         unzip %(out1)s -d fastqc.dir''' % locals()
         pathlib.Path(outfiles[0]).touch()

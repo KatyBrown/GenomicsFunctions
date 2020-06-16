@@ -106,7 +106,7 @@ def getStrand(pref, suffix="_strandedness", intype="salmon",
     # if the input file doesn't exist, assume unstranded
     try:
         df = pd.read_csv(path, sep="\t")
-    except FileNotFoundError:
+    except:
         return ""
     if prog == "hisat":
         cmd = "--rna-strandness"
