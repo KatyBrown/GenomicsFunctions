@@ -9,8 +9,8 @@ import skbio
 from skbio import alignment
 import copy
 import sys
-sys.path.append("/mnt/data6A/CIAlign/")
-import CIAlign
+import CIAlign.utilityFunctions as utilityFunctions
+import CIAlign.similarityMatrix as similarityMatrix
 import sklearn
 import numpy as np
 import sklearn.manifold
@@ -194,12 +194,11 @@ def clusterCyclesSW(infile, outfile_prefix, outpath, final_out, batchsize=200,
                         > %s/%s_%s_%i_ali_test.fasta''' % (outpath, outfile_prefix, n+1, p,
                         outpath, outfile_prefix, n+1, p)
                         os.system(statement)
-                        arr, nams = CIAlign.FastaToArray("%s/%s_%s_%i_ali_test.fasta" % (outpath, outfile_prefix, n+1, p))
+
+                        arr, nams = utilityFunctions.FastaToArray("%s/%s_%s_%i_ali_test.fasta" % (outpath, outfile_prefix, n+1, p))
                         
                         # calculate the pairwise similarity between the current set of sequecnes
-                        ident = CIAlign.calculateSimilarityMatrix(arr, nams, outfile="%s/%s_%s_%i_mat.txt" % (outpath, outfile_prefix, n+1, p),
-                                                                  minoverlap=10, keepgaps=False)
-                        ident = np.nan_to_num(ident)
+                        ident = similarityMatrix.calculateSimilarityMatrix(arr, nams, outfile="%s/%s_%s_%i_mat.txt" % (outpath, outfile_prefix, n+1, p),
                         
                         # convert the distance between the sequences into a set of multi-dimensional scaling co-ordinates
                         M = sklearn.manifold.MDS(5, dissimilarity='precomputed')
@@ -375,14 +374,16 @@ def expandClusters(infile_fasta, infile_clusters,
     bigF = dict()
     for line in clusters:
         line = line.strip().split("\t")
-        if "~" in line[0]:
+        if "_samples_" in line[0] or "~" in line[0]:
             D[line[0]] = line[1]
             D2.setdefault("%s_cons" % line[1], [])
             D2['%s_cons' % line[1]].append(line[0])
             if line[1] != "removed":
                 bigF.update(
                         ut_functions.FastaToDict("%s/%s_consensus.fasta" % (infile_dir, line[1])))
-        else:
+
+        elif "emov" not in line[0]:
+
             origs = D2[line[0]]
             for orig in origs:
                 D[orig] = line[1]
@@ -463,7 +464,9 @@ def parseClusters(infile, outfile, minlength, runlength, overlap, calign_path):
     k = 0
     m = 1
     letters = list(string.ascii_lowercase)
-    arr, nams = CIAlign.FastaToArray(infile)
+
+    arr, nams = utilityFunctions.FastaToArray(infile)
+
     F = ut_functions.FastaToDict(infile)
     binmatrix = arr != "-"
     arrlen = np.shape(arr)[1]

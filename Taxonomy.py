@@ -30,7 +30,7 @@ def findTaxonID(species_name, syst=""):
     while True:
         statement = 'esearch -db taxonomy -query "%s" \
         | efetch' % species_name
-        statement = NCBI.fixStatement(statement)
+  #      statement = NCBI.fixStatement(statement)
         L = Run.systemPopen(statement, syst)
         if len(L) == 0 and i > 50:
             return "000"
@@ -64,12 +64,78 @@ def findTaxonName(taxid, syst=""):
         xtract -pattern ScientificName \
         -element ScientificName''' % taxid
         L = Run.systemPopen(statement, syst)
-        statement = NCBI.fixStatement(statement)
+    #    statement = NCBI.fixStatement(statement)
         if len(L) == 0 and i > 50:
             return "000"
         elif len(L) != 0:
             return L[0]
         i += 1
+
+
+def makeDictsClassifications(nodespath, namespath):
+    tab = pd.read_csv(nodespath, sep="|", header=None)
+    tab[2] = tab[2].str.replace("\t", "")
+    taxa_tab = pd.read_csv(namespath, sep="\t", header=None)
+    taxa_tab[2] = taxa_tab[2].str.replace("\t", "")
+    taxa_names_rev = dict(zip(taxa_tab[2], taxa_tab[0]))
+
+    taxa_tab = taxa_tab[taxa_tab[6] == 'scientific name']
+    taxa_names = dict(zip(taxa_tab[0], taxa_tab[2]))
+    links = dict(zip(tab[0], tab[1]))
+    classes = dict(zip(tab[0], tab[2]))
+    return (classes, links, taxa_names, taxa_names_rev)
+
+
+def findClassification(classification, taxonid,
+                       classes,
+                       links,
+                       taxa_names, syst=""):
+    allclassifications = ['class',
+                          'cohort',
+                          'family',
+                          'forma',
+                          'genus',
+                          'infraclass',
+                          'infraorder',
+                          'kingdom',
+                          'order',
+                          'parvorder',
+                          'phylum',
+                          'species',
+                          'species group',
+                          'species subgroup',
+                          'subclass',
+                          'subfamily',
+                          'subgenus',
+                          'subkingdom',
+                          'suborder',
+                          'subspecies',
+                          'subtribe',
+                          'superclass',
+                          'superfamily',
+                          'superorder',
+                          'tribe']
+
+    types = set([classes[taxonid]])
+    j = 0
+    current = taxonid
+    full = dict()
+    fullid = dict()
+    full[classes[taxonid]] = taxa_names[current]
+    fullid[classes[taxonid]] = current
+    while classification not in types and j < 15:
+        nex = links[current]
+        nex_class = classes[nex]
+        types.add(nex_class)
+        current = nex
+        full[nex_class] = taxa_names[nex]
+        fullid[nex_class] = nex
+        j += 1
+    for c in allclassifications:
+        if c not in full:
+            full[c] = '000'
+            fullid[c] = 0
+    return (full, fullid)
 
 
 def findFamilyGenus(taxonid, nodespath, syst=""):
@@ -265,9 +331,9 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
         # this query often seems to fail for no reason - keep trying
         # until it doesn't or for 10 tries
         s1 = 'efetch -db sra -format xml -id %s' % ID
-        s1 = NCBI.fixStatement(s1)
+     #   s1 = NCBI.fixStatement(s1)
         s2 = 'esearch -db sra -query %s | efetch -format xml' % ID
-        s2 = NCBI.fixStatement(s2)
+     #   s2 = NCBI.fixStatement(s2)
         try:
             if x < 5:
                 statement = s1
@@ -381,7 +447,7 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
     while True:
         statement = '''esearch -db assembly -query "txid%s[Organism]" | \
         efetch -format uilist''' % taxonid
-        statement = NCBI.fixStatement(statement)
+       #  statement = NCBI.fixStatement(statement)
         if log == "on":
             ut_functions.writeCommand(statement, ID)
         x = Run.systemPopen(statement, syst)
@@ -397,7 +463,7 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
         while True:
             statement = '''esearch -db assembly -query "txid%s[Organism]" \
             | efetch -format uilist''' % genusID
-            statement = NCBI.fixStatement(statement)
+         #   statement = NCBI.fixStatement(statement)
             if log == "on":
                 ut_functions.writeCommand(statement, ID)
             x = Run.systemPopen(statement, syst)
@@ -419,7 +485,7 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
                 statement = '''esearch -db assembly \
                 -query "txid%s[Organism]" \
                 | efetch -format uilist''' % familyID
-                statement = NCBI.fixStatement(statement)
+            #    statement = NCBI.fixStatement(statement)
                 if log == "on":
                     ut_functions.writeCommand(statement, ID)
                 x = Run.systemPopen(statement, syst)
@@ -436,7 +502,7 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
 
     statement = '''esearch -db assembly -query "txid%s[Organism]" | \
                  efetch -format uilist''' % taxonid
-    statement = NCBI.fixStatement(statement)
+  #  statement = NCBI.fixStatement(statement)
     if log == "on":
         ut_functions.writeCommand(statement, ID)
     x = Run.systemPopen(statement, syst)
@@ -447,7 +513,7 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
         # try genus level if species level does not exist
         statement = '''esearch -db assembly -query "txid%s[Organism]" \
                       | efetch -format uilist''' % genusID
-        statement = NCBI.fixStatement(statement)
+       # statement = NCBI.fixStatement(statement)
         if log == "on":
             ut_functions.writeCommand(statement, ID)
         x = Run.systemPopen(statement, syst)
@@ -465,7 +531,7 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
             statement = '''esearch -db assembly \
                           -query "txid%s[Organism]" \
                           | efetch -format uilist''' % familyID
-            statement = NCBI.fixStatement(statement)
+         #   statement = NCBI.fixStatement(statement)
             if log == "on":
                 ut_functions.writeCommand(statement, ID)
             x = Run.systemPopen(statement, syst)
