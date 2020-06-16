@@ -178,6 +178,7 @@ def findFamilyGenus(taxonid, nodespath, syst=""):
     tuple
         family taxonomy ID, genus taxonomy ID, family name, genus name
     '''
+
     # read the nodes.dmp file
     tab = pd.read_csv(nodespath, sep="|", header=None)
     # remove tabs from columns
@@ -305,6 +306,12 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
     syst: str
         system option to run statements on different systems
     '''
+    if os.path.exists("force_host.tsv"):
+        hosts = pd.read_csv("force_host.tsv", sep="\t", header=None)
+        hostD = dict(zip(hosts[0], hosts[1]))
+    else:
+        hostD = dict()
+
     # read the reference genome table.tsv
     genometab = [line.strip().split("\t")
                  for line in open("%s/table.tsv" % genomesdir)]
@@ -370,17 +377,21 @@ def getMetadataSRA(ID, genomesdir, nodespath, outfile,
     libtype = experiment['DESIGN']['LIBRARY_DESCRIPTOR']['LIBRARY_STRATEGY']
     pe = experiment['DESIGN']['LIBRARY_DESCRIPTOR']['LIBRARY_LAYOUT']
     # TaxonID
-    taxonid = sample['SAMPLE_NAME']['TAXON_ID']
-
-    if 'SCIENTIFIC_NAME' in sample['SAMPLE_NAME']:
-        sciname= "_".join(sample['SAMPLE_NAME']['SCIENTIFIC_NAME'].replace(" ", "_").split("_")[:2])
-        sciname = sciname.replace(" ", "_")
-        taxonid = findTaxonID(sciname)
+    if ID in hostD:
+        sciname = hostD[ID]
+        sciname = findTaxonID(hostname)
     else:
-        taxid = int(sample['SAMPLE_NAME']['TAXON_ID'])
-        sciname = "_".join(findTaxonName(taxid).replace(" ", "_").split("_")[:2])
-        sciname = sciname.replace(" ", "_")
-        taxonid = findTaxonID(sciname)
+        taxonid = sample['SAMPLE_NAME']['TAXON_ID']
+        
+        if 'SCIENTIFIC_NAME' in sample['SAMPLE_NAME']:
+            sciname= "_".join(sample['SAMPLE_NAME']['SCIENTIFIC_NAME'].replace(" ", "_").split("_")[:2])
+            sciname = sciname.replace(" ", "_")
+            taxonid = findTaxonID(sciname)
+        else:
+            taxid = int(sample['SAMPLE_NAME']['TAXON_ID'])
+            sciname = "_".join(findTaxonName(taxid).replace(" ", "_").split("_")[:2])
+            sciname = sciname.replace(" ", "_")
+            taxonid = findTaxonID(sciname)
 
 
     # Biosample
