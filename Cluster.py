@@ -11,8 +11,8 @@ import copy
 import sys
 sys.path.append("/mnt/data6A/CIAlign/CIAlign")
 import CIAlign
-import utilityFunctions
-import similarityMatrix
+import ut_functions
+import CIAlign.similarityMatrix
 import sklearn
 import numpy as np
 import sklearn.manifold
