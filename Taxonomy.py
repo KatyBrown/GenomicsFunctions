@@ -4,6 +4,7 @@ import ut_functions
 import Run
 import time
 import NCBI
+import os
 
 def findTaxonID(species_name, syst=""):
     '''
