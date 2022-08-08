@@ -17,6 +17,7 @@ import sklearn.manifold
 import sklearn.cluster
 import string
 import pathlib
+import math
 
 def SWalign(seq1, seq2):
     seq1 = skbio.Protein(seq1)
@@ -92,9 +93,39 @@ def SWaligntest(seq1, seq2, nam1, nam2, min_score, min_perc,
     
     
 def clusterCyclesSW(infile, outfile_prefix, outpath, final_out, batchsize=200,
-                    min_score=6, min_perc=0.99,
+                    min_score=6, min_perc=0.95,
                     min_length=50, keep_symbol="", calign_path="."):
+    '''
+    Cluster a set of ORFS using the Smith Waterman algorithm
 
+    Parameters
+    ----------
+    infile : TYPE
+        DESCRIPTION.
+    outfile_prefix : TYPE
+        DESCRIPTION.
+    outpath : TYPE
+        DESCRIPTION.
+    final_out : TYPE
+        DESCRIPTION.
+    batchsize : TYPE, optional
+        DESCRIPTION. The default is 200.
+    min_score : TYPE, optional
+        DESCRIPTION. The default is 6.
+    min_perc : TYPE, optional
+        DESCRIPTION. The default is 0.99.
+    min_length : TYPE, optional
+        DESCRIPTION. The default is 50.
+    keep_symbol : TYPE, optional
+        DESCRIPTION. The default is "".
+    calign_path : TYPE, optional
+        DESCRIPTION. The default is ".".
+
+    Returns
+    -------
+    None.
+
+    '''
     # open an empty table to track how many sequences are in each cluster
     count_tab = open("%s/%s_clusters.tsv" % (outpath, outfile_prefix), "w")
     # open the file which will be clustered
@@ -123,8 +154,9 @@ def clusterCyclesSW(infile, outfile_prefix, outpath, final_out, batchsize=200,
     while pfasta_len > cfasta_len:
         # split the fasta file into batches
         # the batches need to be quite big or nothing will cluster
-        nbatches = len(currentF) / batchsize
+        nbatches = math.ceil(len(currentF) / batchsize)
         F_L = ut_functions.batchFasta(currentF, nbatches)
+        
         n = 1
         Cdict = dict()
         # for each batch of sequences
@@ -195,10 +227,13 @@ def clusterCyclesSW(infile, outfile_prefix, outpath, final_out, batchsize=200,
                         outpath, outfile_prefix, n+1, p)
                         os.system(statement)
 
-                        arr, nams = utilityFunctions.FastaToArray("%s/%s_%s_%i_ali_test.fasta" % (outpath, outfile_prefix, n+1, p))
+                        arr, nams = utilityFunctions.FastaToArray(
+                            "%s/%s_%s_%i_ali_test.fasta" % (outpath, outfile_prefix, n+1, p),
+                            outfile_stem=None)
                         
                         # calculate the pairwise similarity between the current set of sequecnes
-                        ident = similarityMatrix.calculateSimilarityMatrix(arr, nams, outfile="%s/%s_%s_%i_mat.txt" % (outpath, outfile_prefix, n+1, p),
+                        ident = similarityMatrix.calculateSimilarityMatrix(arr, nams, outfile="%s/%s_%s_%i_mat.txt" % (
+                            outpath, outfile_prefix, n+1, p))
                         
                         # convert the distance between the sequences into a set of multi-dimensional scaling co-ordinates
                         M = sklearn.manifold.MDS(5, dissimilarity='precomputed')
@@ -239,18 +274,18 @@ def clusterCyclesSW(infile, outfile_prefix, outpath, final_out, batchsize=200,
                                 outpath, outfile_prefix, n+1, p)
                                 os.system(statement)
                                 # parse the alignment and generate a consensus
-                                statement = '''%s/CIAlign.py --infile %s/%s_%s_%i_ali.fasta \
+                                statement = '''CIAlign --infile %s/%s_%s_%i_ali.fasta \
                                 --remove_min_length %s --outfile_stem %s/%s_%s_%i \
                                 --remove_insertions --crop_ends --remove_short \
                                 --make_consensus --consensus_type majority_nongap \
-                                --consensus_name %s_%s_%i_cons''' % (calign_path, outpath, outfile_prefix, n+1,
+                                --consensus_name %s_%s_%i_cons''' % (outpath, outfile_prefix, n+1,
                                 p, min_length, outpath, outfile_prefix, n+1, p, outfile_prefix, n+1, p)
                                 ut_functions.writeCommand(statement, "%s/%s" % (outpath, outfile_prefix))
                                 os.system(statement)
                                 ###### !!!!!!
                                 # sometimes there is no sequence left after the previous step
                                 if os.path.exists("%s/%s_%s_%i_consensus.fasta"  %(outpath, outfile_prefix, n+1, p)):
-                                    x = ut_functions.FastaToDict("%s/%s_%s_%i_parsed.fasta" % (outpath,
+                                    x = ut_functions.FastaToDict("%s/%s_%s_%i_cleaned.fasta" % (outpath,
                                                                                                outfile_prefix,
                                                                                                n+1, p))
                                     for key in x:
@@ -344,23 +379,23 @@ def clusterCyclesCDHit(infile, outfile_prefix, outpath, final_out, C=0.95, L=0.2
                     > %s/%s_%s_%i_ali.fasta''' % (outpath, outfile_prefix, i+1, j,
                     outpath, outfile_prefix, i+1, j)
                     os.system(statement)
-                    statement = '''%s/CIAlign.py --infile %s/%s_%s_%i_ali.fasta \
+                    statement = '''CIAlign --infile %s/%s_%s_%i_ali.fasta \
                     --remove_min_length %s --outfile_stem %s/%s_%s_%i \
                     --remove_insertions --crop_ends --remove_short \
                     --make_consensus --consensus_type majority_nongap \
-                    --consensus_name %s_%s_%i_cons''' % (calign_path, outpath, outfile_prefix, i+1,
+                    --consensus_name %s_%s_%i_cons''' % (outpath, outfile_prefix, i+1,
                     j, M, outpath, outfile_prefix, i+1, j, outfile_prefix, i+1, j)
                     ut_functions.writeCommand(statement, "%s/%s" % (outpath, outfile_prefix))
                     os.system(statement)    
             cdict.update(ut_functions.FastaToDict("%s/%s_%s_%i_consensus.fasta" % (outpath, outfile_prefix,
                                                                                 i+1, j)))
-        out = open("%s/%s_parsed_%i.fasta" % (outpath, outfile_prefix, j), "w")
+        out = open("%s/%s_cleaned_%i.fasta" % (outpath, outfile_prefix, j), "w")
         for nam in cdict:
             out.write(">%s\n%s\n" % (nam, cdict[nam]))
         out.close()
-        currentF = "%s/%s_parsed_%i.fasta" % (outpath, outfile_prefix, j)
+        currentF = "%s/%s_cleaned_%i.fasta" % (outpath, outfile_prefix, j)
         j += 1
-    final = "%s/%s_parsed_%i.fasta" % (outpath, outfile_prefix, j-1)
+    final = "%s/%s_cleaned_%i.fasta" % (outpath, outfile_prefix, j-1)
     shutil.copy(final, final_out)
 
 
@@ -392,13 +427,14 @@ def expandClusters(infile_fasta, infile_clusters,
                 if line[1] != "removed":
                     bigF.update(
                             ut_functions.FastaToDict("%s/%s_consensus.fasta" % (infile_dir, line[1])))
+    
     D_rev = dict()
     for key, val in D.items():
         D_rev.setdefault(val, [])
         D_rev[val].append(key)
     for i, key in enumerate(D_rev):
         if key != "removed":
-            out = open("%s/%s_parsed2.fasta" % (infile_dir, key), "w")
+            out = open("%s/%s_cleaned2.fasta" % (infile_dir, key), "w")
             f = ut_functions.FastaToDict("%s/%s_consensus.fasta" % (infile_dir, key))
             if len(f) != 0:
                 cons = list(f.values())[0]
@@ -419,20 +455,20 @@ def expandClusters(infile_fasta, infile_clusters,
                     cons_array = np.array(list(cons_subseq)) != "-"
                     new_array = np.array(list(new_subseq))[cons_array]
                     
-                    new_parsed = "".join(new_array)
+                    new_cleaned = "".join(new_array)
                     buffer_start = coords_cons[0]
                     buffer_end = len(cons) - (buffer_start + sum(cons_array))
-                    new_parsed_buffered = "-" * buffer_start + new_parsed + "-" * buffer_end
+                    new_cleaned_buffered = "-" * buffer_start + new_cleaned + "-" * buffer_end
                     
-                    out.write(">%s\n%s\n" % (val, new_parsed_buffered))
+                    out.write(">%s\n%s\n" % (val, new_cleaned_buffered))
             out.close()
-            os.system("""%s/CIAlign.py --infile %s/%s_parsed2.fasta \
+            os.system("""CIAlign --infile %s/%s_cleaned2.fasta \
                       --outfile_stem %s/%s \
                       --remove_insertions \
                       --insertion_min_size 1 \
                       --insertion_max_size 20 \
                       --make_consensus \
-                      --consensus_type majority_nongap""" % (calign_path,
+                      --consensus_type majority_nongap""" % (
                       infile_dir, key, outfile_dir, key))    
 
 
@@ -465,7 +501,7 @@ def parseClusters(infile, outfile, minlength, runlength, overlap, calign_path):
     m = 1
     letters = list(string.ascii_lowercase)
 
-    arr, nams = utilityFunctions.FastaToArray(infile)
+    arr, nams = utilityFunctions.FastaToArray(infile, outfile_stem=None)
 
     F = ut_functions.FastaToDict(infile)
     binmatrix = arr != "-"
@@ -495,18 +531,18 @@ def parseClusters(infile, outfile, minlength, runlength, overlap, calign_path):
             l = 0
             for r in f[1]:
                 if r[0] - s > minlength:
-                    outf = outfile.replace("_parsed.fasta", "_unparsed_%s.fasta" % letters[l])
+                    outf = outfile.replace("_cleaned.fasta", "_uncleaned_%s.fasta" % letters[l])
                     out = open(outf, "w")
                     for nam in nams:
                         out.write(">%s\n%s\n" % (nam, F[nam][s:r[0]]))
                     out.close()
-                    outstem = "%s_%s" % (outfile.replace("_parsed.fasta", ""), letters[l])
+                    outstem = "%s_%s" % (outfile.replace("_cleaned.fasta", ""), letters[l])
                     pref = outstem.split("/")[-1]
-                    statement = '''%s/CIAlign.py --infile %s \
+                    statement = '''CIAlign --infile %s \
                     --remove_min_length %s --outfile_stem %s \
                     --remove_short --make_consensus \
                     --consensus_type majority_nongap \
-                    --consensus_name %s_cons''' % (calign_path, outf,
+                    --consensus_name %s_cons''' % (outf,
                                                    minlength, outstem,
                                                    pref)
                     os.system(statement)       
@@ -515,33 +551,33 @@ def parseClusters(infile, outfile, minlength, runlength, overlap, calign_path):
                 s = r[1]
             k += 1
             if arrlen - s > minlength and s != 0:
-                outf = outfile.replace("_parsed.fasta", "_unparsed_%s.fasta" % letters[l])
+                outf = outfile.replace("_cleaned.fasta", "_uncleaned_%s.fasta" % letters[l])
                 out = open(outf, "w")
                 for nam in nams:
                     out.write(">%s\n%s\n" % (nam, F[nam][s:arrlen]))
                 out.close()
-                outstem = "%s_%s" % (outfile.replace("_parsed.fasta", ""), letters[l])
+                outstem = "%s_%s" % (outfile.replace("_cleaned.fasta", ""), letters[l])
                 pref = outstem.split("/")[-1]
-                statement = '''%s/CIAlign.py --infile %s \
+                statement = '''CIAlign --infile %s \
                 --remove_min_length %s --outfile_stem %s \
                 --remove_short --make_consensus \
                 --consensus_type majority_nongap \
-                --consensus_name %s_cons''' % (calign_path, outf,
+                --consensus_name %s_cons''' % (outf,
                                                minlength, outstem, pref)
                 os.system(statement)
                 o += 1
             pathlib.Path(outfile).touch()
             
         else:
-            outf = outfile.replace("_parsed.fasta", "_unparsed.fasta")
+            outf = outfile.replace("_cleaned.fasta", "_uncleaned.fasta")
             shutil.copy(infile, outf)
-            outstem = outfile.replace("_parsed.fasta", "")
+            outstem = outfile.replace("_cleaned.fasta", "")
             pref = outstem.split("/")[-1]
-            statement = '''%s/CIAlign.py --infile %s \
+            statement = '''CIAlign --infile %s \
                 --remove_min_length %s --outfile_stem %s \
                 --remove_short --make_consensus \
                 --consensus_type majority_nongap \
-                --consensus_name %s_cons''' % (calign_path, outf, minlength,
+                --consensus_name %s_cons''' % (outf, minlength,
                                                 outstem, pref)
             os.system(statement)
             pathlib.Path(outfile).touch()
