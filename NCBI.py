@@ -6,6 +6,7 @@ import xmltodict
 import pandas as pd
 import os
 import shutil
+import time
 
 
 def getApiKey():
@@ -30,11 +31,24 @@ def getRecord(acc,
     Entrez.email = email
     Entrez.api = api
     # Retrieve all data for this taxonomy ID from NCBI Taxonomy
-    search = Entrez.efetch(id=acc,
-                           db=db,
-                           retmode="xml")
-    record = Entrez.read(search)
-    return(record)
+    x = 0
+    while x < 10:
+        try:
+            search = Entrez.efetch(id=acc,
+                                   db=db,
+                                   retmode="xml")
+            print ("attempt %s" % x)
+            break
+        except Entrez.HTTPError:
+            time.sleep(10)
+            x += 1
+    if x != 10:
+        record = Entrez.read(search)
+        return(record)
+    else:
+        print ("Failed for %s" % acc)
+        return (dict())
+
 
 def getRecordSRA(acc,
               email='kab84@cam.ac.uk',
@@ -46,13 +60,25 @@ def getRecordSRA(acc,
     # NCBI API requires an email address
     Entrez.email = email
     Entrez.api = api
-    # Retrieve all data for this taxonomy ID from NCBI Taxonomy
-    search = Entrez.efetch(id=acc,
-                           db='sra',
-                           retmode="xml")
-    record = xmltodict.parse(search.read())
-    record = record['EXPERIMENT_PACKAGE_SET']['EXPERIMENT_PACKAGE']
-    return(record)
+    x = 0
+    while x < 5:
+        try:
+            # Retrieve all data for this taxonomy ID from NCBI Taxonomy
+            search = Entrez.efetch(id=acc,
+                                   db='sra',
+                                   retmode="xml")
+            print ("hi %s" % x)
+            break
+        except Entrez.HTTPError:
+            time.sleep(10)
+            x += 1
+    if x != 10:
+        record = xmltodict.parse(search.read())
+        record = record['EXPERIMENT_PACKAGE_SET']['EXPERIMENT_PACKAGE']
+        return(record)
+    else:
+        print ("Failed for %s" % acc)
+        return (dict())
 
 
 def splitaccs(accs, splitsize):
@@ -61,14 +87,15 @@ def splitaccs(accs, splitsize):
     chunks = np.array_split(accarray, nchunks)
     return(chunks)
 
-def getRecords(accs, chunksize=50, db='nuccore'):
+def getRecords(accs, chunksize=50, db='nuccore', silent=False):
     chunks = splitaccs(accs, chunksize)
     records = []
     recordD = dict()
     for i, chunk in enumerate(chunks):
         div = 10**math.floor(math.log10(len(chunks)))
-        if i % int(div) == 0:
-            print ("Searched %i / %i accession blocks" % (i, len(chunks)))
+        if not silent:
+            if i % int(div) == 0:
+                print ("Searched %i / %i accession blocks" % (i, len(chunks)))
         records += getRecord(",".join(chunk), db)
     for record in records:
         if 'GBSeq_accession-version' in record:

@@ -13,14 +13,15 @@ def showAllProts(recordD):
     prots = set()
     for acc, record in recordD.items():
         for feat in record['GBSeq_feature-table']:
-            quals = feat['GBFeature_quals']
-            qD = dict()
-            for qual in quals:
-                if 'GBQualifier_value' in qual:
-                    qD[qual['GBQualifier_name']] = qual['GBQualifier_value']
-            if 'product' in qD:
-                prots.add(qD['product'])
-    print (prots)
+            if 'GBFeature_quals' in feat:
+                quals = feat['GBFeature_quals']
+                qD = dict()
+                for qual in quals:
+                    if 'GBQualifier_value' in qual:
+                        qD[qual['GBQualifier_name']] = qual['GBQualifier_value']
+                if 'product' in qD:
+                    prots.add(qD['product'])
+    return (prots)
 
 
 def findSplit(recordD, n):
@@ -30,7 +31,7 @@ def findSplit(recordD, n):
         print (nam)
 
 
-def getTaxa(recordD, DD, typ="aa"):
+def getTaxa(recordD, DD, typ="aa", silent=False):
     if typ == "nt":
         recordD = {x: recordD[DD['nuc_nam_D'][x]] for x in DD['protD']}
 
@@ -38,14 +39,15 @@ def getTaxa(recordD, DD, typ="aa"):
     for record_nam, record in recordD.items():
         txid = None
         for feature in record['GBSeq_feature-table']:
-            quals = feature['GBFeature_quals']
-            for qual in quals:
-                if qual['GBQualifier_name'] == 'db_xref':
-                    if qual['GBQualifier_value'].startswith('taxon:'):
-                        txid = qual['GBQualifier_value'].split(":")[1]
+            if 'GBFeature_quals' in feature:
+                quals = feature['GBFeature_quals']
+                for qual in quals:
+                    if qual['GBQualifier_name'] == 'db_xref':
+                        if qual['GBQualifier_value'].startswith('taxon:'):
+                            txid = qual['GBQualifier_value'].split(":")[1]
         assert txid is not None
         tax_ids[record_nam] = txid
-    records_tax = NCBI.getRecords(list(tax_ids.values()), 50, 'taxonomy')
+    records_tax = NCBI.getRecords(list(tax_ids.values()), 50, 'taxonomy', silent=silent)
     taxD = dict()
     for acc, record in records_tax.items():
         taxD[acc] = NCBI.cleanNCBITaxonomy(record)
@@ -54,8 +56,17 @@ def getTaxa(recordD, DD, typ="aa"):
     DD['taxtab'] = taxtab
     return (DD)
 
+def makeBlankDict():
+    DD = dict()
+    DD['accD'] = dict()
+    DD['nucD'] = dict()
+    DD['protD'] = dict()
+    DD['namD'] = dict()
+    DD['nuc_nam_D'] = dict()
+    DD['descD'] = dict()
+    return (DD)
 
-def RecordsToProts(recordD, rdrp_strings, outf, names,
+def RecordsToProts(recordD, rdrp_strings, rdrp_not, outf, names,
                    DD, suffix, typ='aa'):
     out = open(outf, "w")
     if typ == "nt":
@@ -76,14 +87,19 @@ def RecordsToProts(recordD, rdrp_strings, outf, names,
             if 'product' in qD:
                 y = 0
                 for string in rdrp_strings:
-                    if string in qD['product']:
-                        y += 1
-                if y != 0:
+                    if string in qD['product'].lower():
+                        w = 0
+                        for string2 in rdrp_not:
+                            if string2 in qD['product'].lower():
+                                w += 1
+                        if w == 0:
+                            y += 1
+                if y != 0 or len(rdrp_strings) == 0:
                     prod = record['GBSeq_organism']
                     virus_nam = ut_functions.clean_string(prod)
                     if virus_nam[0] == virus_nam[0].lower():
                         virus_nam = virus_nam[0].upper() + virus_nam[1:]
-                    if 'protein_id' in qD:
+                    if 'protein_id' in qD and 'translation' in qD:
                         acc_prot = qD['protein_id']
                         prot_seq = qD['translation']
                         nuc_seq = record['GBSeq_sequence']
@@ -94,6 +110,8 @@ def RecordsToProts(recordD, rdrp_strings, outf, names,
                         DD['protD'][acc_prot] = prot_seq
                         DD['namD'][acc_prot] = names[acc]
                         DD['nuc_nam_D'][acc_prot] = acc
+                        DD['descD'][acc_prot] = qD['product']
+
                         x += 1
 
                 else:
