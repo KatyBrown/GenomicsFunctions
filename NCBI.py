@@ -22,12 +22,13 @@ def fixStatement(statement, syst=""):
 def getRecord(acc,
               db='nuccore',
               email='kab84@cam.ac.uk',
-              api='32230a5082e8b865e7627e41068bee1f3208'):
+              api='32230a5082e8b865e7627e41068bee1f3208',
+              silent=True):
     '''
     Retrieve taxonomic lineage for an NCBI taxonomy ID using their API,
     plus the common name.
     '''
-    # NCBI API requires an email address
+#    # NCBI API requires an email address
     Entrez.email = email
     Entrez.api = api
     # Retrieve all data for this taxonomy ID from NCBI Taxonomy
@@ -37,7 +38,8 @@ def getRecord(acc,
             search = Entrez.efetch(id=acc,
                                    db=db,
                                    retmode="xml")
-            print ("attempt %s" % x)
+            if not silent:
+                print ("attempt %s" % x)
             break
         except Entrez.HTTPError:
             time.sleep(10)
@@ -96,7 +98,7 @@ def getRecords(accs, chunksize=50, db='nuccore', silent=False):
         if not silent:
             if i % int(div) == 0:
                 print ("Searched %i / %i accession blocks" % (i, len(chunks)))
-        records += getRecord(",".join(chunk), db)
+        records += getRecord(",".join(chunk), db, silent=silent)
     for record in records:
         if 'GBSeq_accession-version' in record:
             recordD[record['GBSeq_accession-version']] = record
