@@ -7,6 +7,56 @@ import glob
 import re
 import Bio.Seq
 import ORFs
+import os
+
+
+def filterDD(accs, DD):
+    DD2 = dict()
+    for key in DD:
+        if key != 'taxtab':
+            DD2[key] = dict()
+    
+        for acc in accs:
+            DD2[key][acc] = DD[key][acc]
+
+    if 'taxtab' in DD:
+        DD2['taxtab'] = DD['taxtab']
+    return (DD2)
+
+
+def getORFPosHMMER(hmmer_tab, orfF, orfD, ntF):
+    posD = dict()
+    for query in hmmer_tab['query_name']:
+        nt, ind = query.split("|")
+        ind = int(ind)
+        orf_seq = orfF[nt][ind]
+        nt_seq = ntF[nt]
+        start, end, strand, details = orfD[nt][ind]
+        nt_subseq = nt_seq[start:end]
+        if strand == "-":
+            nt_subseq = Bio.Seq.reverse_complement(nt_subseq)
+        trans = Bio.Seq.translate(nt_subseq)
+        assert trans == orf_seq
+        pos = "%s:%s-%s%s_pp" % (nt, start, end, strand)
+        posD[nt] = pos, orf_seq
+    return (posD)
+
+def posDToProts(posD, recordD, suffix, DD):
+    for query, (pos, oseq) in posD.items():
+        record = recordD[query]
+        nt_seq = record['GBSeq_sequence'].upper()
+        virus_nam = ut_functions.clean_string(record['GBSeq_organism'])
+        if virus_nam[0] == virus_nam[0].lower():
+            virus_nam = virus_nam[0].upper() + virus_nam[1:]
+        virus_id = "%s|%s|%s" % (pos, virus_nam, suffix)
+        desc = record['GBSeq_definition']
+        DD['accD'][pos] = virus_id
+        DD['protD'][pos] = oseq
+        DD['namD'][pos] = virus_nam
+        DD['nuc_nam_D'][pos] = query
+        DD['descD'][pos] = desc
+        DD['nucD'][pos] = nt_seq
+    return (DD)        
 
 
 def showAllProts(recordD):
@@ -66,6 +116,32 @@ def makeBlankDict():
     DD['descD'] = dict()
     return (DD)
 
+
+def addNtSeqs(recordD, DD):
+    for protacc, ntacc in DD['nuc_nam_D'].items():
+        record = recordD[ntacc]
+        record_seq = record['GBSeq_sequence']
+        DD['nucD'][protacc] = record_seq
+    return (DD)
+
+
+def ProtRecordsToProts(recordD, DD, suffix):  
+    for acc, record in recordD.items():
+        nt_acc = record['GBSeq_source-db'].split(" ")[-1]
+        prot_seq = record['GBSeq_sequence'].upper()
+        virus_nam = ut_functions.clean_string(record['GBSeq_organism'])
+        if virus_nam[0] == virus_nam[0].lower():
+            virus_nam = virus_nam[0].upper() + virus_nam[1:]
+        virus_id = "%s|%s|%s" % (acc, virus_nam, suffix)
+        desc = record['GBSeq_definition']
+        DD['accD'][acc] = virus_id
+        DD['protD'][acc] = prot_seq
+        DD['namD'][acc] = virus_nam
+        DD['nuc_nam_D'][acc] = nt_acc
+        DD['descD'][acc] = desc
+    return (DD)
+
+
 def RecordsToProts(recordD, rdrp_strings, rdrp_not, outf, names,
                    DD, suffix, typ='aa'):
     out = open(outf, "w")
@@ -89,10 +165,11 @@ def RecordsToProts(recordD, rdrp_strings, rdrp_not, outf, names,
                 for string in rdrp_strings:
                     if string in qD['product'].lower():
                         w = 0
+                        b = 0
                         for string2 in rdrp_not:
                             if string2 in qD['product'].lower():
                                 w += 1
-                        if w == 0:
+                        if w == 0 and b == 0:
                             y += 1
                 if y != 0 or len(rdrp_strings) == 0:
                     prod = record['GBSeq_organism']
@@ -115,6 +192,7 @@ def RecordsToProts(recordD, rdrp_strings, rdrp_not, outf, names,
                         x += 1
 
                 else:
+
                     if typ == "nt":
                         if 'translation' in qD and 'protein_id' in qD:
                             pp["%s|%s|%s" % (acc, qD['protein_id'], qD['product'].replace(" ", "_"))] = qD['translation']
@@ -140,6 +218,7 @@ def makeMDTable(DD):
                                columns=['Accession', 'Original_Name']),
                   'right')
     df['Nuccore_Accession'] = [DD['nuc_nam_D'][x] for x in df['Accession']]
+
     df = df.merge(pd.DataFrame(DD['tax_ids'].items(),
                                columns=['Accession', 'TaxID']), 'outer')
     df['TaxID'] = df['TaxID'].fillna(0)
@@ -147,43 +226,38 @@ def makeMDTable(DD):
     df = df.merge(DD['taxtab'], 'left')
     df['TaxID'] = df['TaxID'].astype(int)
     df['Accession_Short'] = df['Accession'].str.split("ntpp").str.get(0)
-    df['Original_Taxon'] = [DD['namD'][x] for x in df['Accession']]
-    print (len(df))
+    #df['Original_Taxon'] = [DD['namD'][x] for x in df['Accession']]
+    #print (len(df))
     return (df)
 
 
 def writeAll(DD, df, auth):
-    donef = glob.glob("../done*txt")
-    M = set()
-    for d in donef:
-        M.add(int(d.split("/")[-1].split(".")[0].replace("done", "")))
-    done = set([line.strip() for line in open("../done%i.txt" % max(M)).readlines()])
-    df = df[~df['Nuccore_Accession'].isin(done)]
-    df = df[~df['Accession'].isin(done)]
-    df = df[~df['Accession_Short'].isin(done)]
-    df.to_csv("metadata_table.tsv", sep="\t", index=None)
-    out = open("clean_gb_fasta_nucleotide_%s.fasta" % auth, "w")
+
+    df.to_csv("data/metadata_table.tsv", sep="\t", index=None)
+    out = open("data/clean_gb_fasta_nucleotide_%s.fasta" % auth, "w")
     for nam, seq in DD['nucD'].items():
-        if nam not in done:
             out.write(">%s\n%s\n" % (DD['accD'][nam],
                                      seq.upper().replace(
                                          "-", "").replace("X", "")))
     out.close()
-    out = open("clean_gb_fasta_%s.fasta" % auth, "w")
+    out = open("data/clean_gb_fasta_%s.fasta" % auth, "w")
     for nam, seq in DD['protD'].items():
-        if nam not in done:
             out.write(">%s\n%s\n" % (DD['accD'][nam],
                                      seq.upper().replace(
                                          "-", "").replace("X", "")))
     out.close()
- 
-    done = done | set(df['Accession_Short']) | set(
-        df['Accession']) | set(
-            df['Nuccore_Accession'])
-    outd = open("../done%i.txt" % (max(M) + 1), "w")
-    for d in done:
-        outd.write("%s\n" % d)
-    outd.close()
+    try:
+        os.mkdir("data/subsets")
+    except:
+        pass
+    for clasi in set(df['Classification']):
+        subtab = df[df['Classification'] == clasi]
+        out = open("data/subsets/%s.fasta" % clasi, "w")
+        for nam in set(subtab['Accession']):
+            out.write(">%s\n%s\n" % (DD['accD'][nam],
+                                     seq.upper().replace(
+                                         "-", "").replace("X", "")))
+        out.close()
 
 
 def getAccRange(startacc, endacc):

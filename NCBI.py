@@ -45,7 +45,10 @@ def getRecord(acc,
             time.sleep(10)
             x += 1
     if x != 10:
-        record = Entrez.read(search)
+        try:
+            record = Entrez.read(search, validate=False)
+        except Entrez.Parser.CorruptedXMLError:
+            record = dict()
         return(record)
     else:
         print ("Failed for %s" % acc)

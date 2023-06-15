@@ -82,3 +82,18 @@ def makeORFTable(seqD, orfD, tabD):
         z = z.drop(2, axis=1)
         tab = pd.concat([tab, z])
     return (tab)
+
+
+def getLongestORFs(orfD, seqD):
+    longestD = dict()
+    for orf, resL in orfD.items():
+        longest = ""
+        longest_len = 0
+        for i, res in enumerate(resL):
+            start, end, strand, details = res
+            length = end - start
+            if length > longest_len:
+                longest = i
+                longest_len = length
+        longestD[orf] = longest, longest_len, seqD[orf][longest]
+    return (longestD)

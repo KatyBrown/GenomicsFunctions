@@ -66,7 +66,7 @@ def makeTablesFastas(lookup, txtfile, orig_fasta, rep_fasta_out, tab_out, fastad
         groupt = clustered.get_group(group)
         group_id = "g%i" % (gn)
         group_size = len(groupt)
-        out = open("%s/%s.fasta" % (fastadir, group.replace("|", "_")), "w")
+        out = open("%s/%s.fasta" % (fastadir, group.replace("|", "_").replace("/", "")[0:100]), "w")
         for member in groupt['Cluster_Members']:
             outt.write("%s\t%s\t%s\t%s\n" % (group_id, member, group,
                                              group_size))
