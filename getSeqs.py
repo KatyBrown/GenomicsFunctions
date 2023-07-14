@@ -9,6 +9,9 @@ import Bio.Seq
 import ORFs
 import os
 
+def readAccList(file):
+    return set([line.strip() for line in open(file).readlines()])
+    
 
 def filterDD(accs, DD):
     DD2 = dict()
@@ -17,7 +20,9 @@ def filterDD(accs, DD):
             DD2[key] = dict()
     
         for acc in accs:
-            DD2[key][acc] = DD[key][acc]
+            if key != 'taxtab':
+                if acc in DD[key]:
+                    DD2[key][acc] = DD[key][acc]
 
     if 'taxtab' in DD:
         DD2['taxtab'] = DD['taxtab']
@@ -29,17 +34,23 @@ def getORFPosHMMER(hmmer_tab, orfF, orfD, ntF):
     for query in hmmer_tab['query_name']:
         nt, ind = query.split("|")
         ind = int(ind)
-        orf_seq = orfF[nt][ind]
-        nt_seq = ntF[nt]
-        start, end, strand, details = orfD[nt][ind]
-        nt_subseq = nt_seq[start:end]
-        if strand == "-":
-            nt_subseq = Bio.Seq.reverse_complement(nt_subseq)
-        trans = Bio.Seq.translate(nt_subseq)
-        assert trans == orf_seq
-        pos = "%s:%s-%s%s_pp" % (nt, start, end, strand)
-        posD[nt] = pos, orf_seq
+        pos, oseq = getORFPosDict(nt, ind, orfF, orfD, ntF)
+        posD[nt] = pos, oseq
     return (posD)
+
+def getORFPosDict(acc, ind, orfF, orfD, ntF):
+    nt_seq = ntF[acc]
+    orf_seq = orfF[acc][ind]
+
+    start, end, strand, details = orfD[acc][ind]
+    nt_subseq = nt_seq[start:end]
+    if strand == "-":
+        nt_subseq = Bio.Seq.reverse_complement(nt_subseq)
+    trans = Bio.Seq.translate(nt_subseq)
+    assert trans == orf_seq
+    pos = "%s:%s-%s%s_pp_nogb" % (acc.replace("_nogb", ""), start, end, strand)
+    return (pos, orf_seq)
+
 
 def posDToProts(posD, recordD, suffix, DD):
     for query, (pos, oseq) in posD.items():
@@ -56,7 +67,28 @@ def posDToProts(posD, recordD, suffix, DD):
         DD['nuc_nam_D'][pos] = query
         DD['descD'][pos] = desc
         DD['nucD'][pos] = nt_seq
+    return (DD)
+
+
+def posDLocalToProts(posD, F, names, suffix, DD):
+    for query, (pos, oseq) in posD.items():
+        nt_seq = F[query]
+        virus_nam = ut_functions.clean_string(query)
+        if virus_nam[0] == virus_nam[0].lower():
+            virus_nam = virus_nam[0].upper() + virus_nam[1:]
+        desc = query
+        p = pos.split(":")[1]
+        acc = "%s:%s" % (virus_nam,  p)
+        #acc = virus_nam
+        virus_id = "%s|%s|%s" % (acc, virus_nam, suffix)
+        DD['accD'][acc] = virus_id
+        DD['protD'][acc] = oseq
+        DD['namD'][acc] = virus_nam
+        DD['nuc_nam_D'][acc] = query
+        DD['descD'][acc] = desc
+        DD['nucD'][acc] = nt_seq
     return (DD)        
+
 
 
 def showAllProts(recordD):
@@ -83,21 +115,34 @@ def findSplit(recordD, n):
 
 def getTaxa(recordD, DD, typ="aa", silent=False):
     if typ == "nt":
-        recordD = {x: recordD[DD['nuc_nam_D'][x]] for x in DD['protD']}
-
+       recordD2 = {x: recordD[DD['nuc_nam_D'][x]] for x in DD['protD']}
+       recordD.update(recordD2)
+    accs = set()
+    aD = dict()
+    for acc, nacc in DD['nuc_nam_D'].items():
+        accs.add(acc.split(":")[0])
+        accs.add(nacc)
+        aD[acc.split(":")[0]] = acc
+        aD[nacc.split(":")[0]] = acc
+    for acc in DD['accD']:
+        accs.add(acc.split(":")[0])
+        aD[acc.split(":")[0]] = acc
     tax_ids = dict()
     for record_nam, record in recordD.items():
-        txid = None
-        for feature in record['GBSeq_feature-table']:
-            if 'GBFeature_quals' in feature:
-                quals = feature['GBFeature_quals']
-                for qual in quals:
-                    if qual['GBQualifier_name'] == 'db_xref':
-                        if qual['GBQualifier_value'].startswith('taxon:'):
-                            txid = qual['GBQualifier_value'].split(":")[1]
-        assert txid is not None
-        tax_ids[record_nam] = txid
-    records_tax = NCBI.getRecords(list(tax_ids.values()), 50, 'taxonomy', silent=silent)
+        if record_nam in accs:
+            txid = None
+            for feature in record['GBSeq_feature-table']:
+                if 'GBFeature_quals' in feature:
+                    quals = feature['GBFeature_quals']
+                    for qual in quals:
+                        if qual['GBQualifier_name'] == 'db_xref':
+                            if qual['GBQualifier_value'].startswith('taxon:'):
+                                txid = qual['GBQualifier_value'].split(":")[1]
+            if txid is None:
+                txid = str(0)
+            tax_ids[aD[record_nam]] = txid
+    records_tax = NCBI.getRecords(list(tax_ids.values()), 50,
+                                  'taxonomy', silent=silent)
     taxD = dict()
     for acc, record in records_tax.items():
         taxD[acc] = NCBI.cleanNCBITaxonomy(record)
@@ -105,6 +150,7 @@ def getTaxa(recordD, DD, typ="aa", silent=False):
     DD['tax_ids'] = tax_ids
     DD['taxtab'] = taxtab
     return (DD)
+
 
 def makeBlankDict():
     DD = dict()
@@ -118,16 +164,27 @@ def makeBlankDict():
 
 
 def addNtSeqs(recordD, DD):
+    nnD_new = dict()
+    exc = set()
     for protacc, ntacc in DD['nuc_nam_D'].items():
-        record = recordD[ntacc]
-        record_seq = record['GBSeq_sequence']
-        DD['nucD'][protacc] = record_seq
-    return (DD)
+        if ntacc in recordD:
+            record = recordD[ntacc]
+            record_seq = record['GBSeq_sequence']
+            DD['nucD'][protacc] = record_seq
+            nnD_new[protacc] = ntacc
+        else:
+            exc.add((protacc, ntacc))
+    DD['nuc_nam_D'] = nnD_new
+    return (DD, exc)
 
 
 def ProtRecordsToProts(recordD, DD, suffix):  
     for acc, record in recordD.items():
-        nt_acc = record['GBSeq_source-db'].split(" ")[-1]
+        if 'GBSeq_source-db' in record:
+            if 'accession' in record['GBSeq_source-db']:
+                nt_acc = record['GBSeq_source-db'].split(" ")[-1]
+                DD['nuc_nam_D'][acc] = nt_acc
+
         prot_seq = record['GBSeq_sequence'].upper()
         virus_nam = ut_functions.clean_string(record['GBSeq_organism'])
         if virus_nam[0] == virus_nam[0].lower():
@@ -137,7 +194,6 @@ def ProtRecordsToProts(recordD, DD, suffix):
         DD['accD'][acc] = virus_id
         DD['protD'][acc] = prot_seq
         DD['namD'][acc] = virus_nam
-        DD['nuc_nam_D'][acc] = nt_acc
         DD['descD'][acc] = desc
     return (DD)
 
@@ -145,68 +201,69 @@ def ProtRecordsToProts(recordD, DD, suffix):
 def RecordsToProts(recordD, rdrp_strings, rdrp_not, outf, names,
                    DD, suffix, typ='aa'):
     out = open(outf, "w")
-    if typ == "nt":
-        outnt = open(outf.replace(".fasta", "_nt.fasta"), "w")
+    outnt = open(outf.replace(".fasta", "_nt.fasta"), "w")
     for acc, record in recordD.items():
         x = 0
         pp = dict()
-        for feat in record['GBSeq_feature-table']:
-            if not isinstance(feat, list):
-                feat = [feat]
-            qD = dict()
-            for f in feat:
-                if 'GBFeature_quals' in f:
-                    quals = f['GBFeature_quals']
-                    for qual in quals:
-                        if 'GBQualifier_value' in qual:
-                            qD[qual['GBQualifier_name']] = qual['GBQualifier_value']
-            if 'product' in qD:
-                y = 0
-                for string in rdrp_strings:
-                    if string in qD['product'].lower():
-                        w = 0
-                        b = 0
-                        for string2 in rdrp_not:
-                            if string2 in qD['product'].lower():
-                                w += 1
-                        if w == 0 and b == 0:
-                            y += 1
-                if y != 0 or len(rdrp_strings) == 0:
-                    prod = record['GBSeq_organism']
-                    virus_nam = ut_functions.clean_string(prod)
-                    if virus_nam[0] == virus_nam[0].lower():
-                        virus_nam = virus_nam[0].upper() + virus_nam[1:]
-                    if 'protein_id' in qD and 'translation' in qD:
-                        acc_prot = qD['protein_id']
-                        prot_seq = qD['translation']
-                        nuc_seq = record['GBSeq_sequence']
-                        virus_id = "%s|%s|%s" % (acc_prot, virus_nam, suffix)
+        if 'GBSeq_feature-table' in record:
+            for feat in record['GBSeq_feature-table']:
+                if not isinstance(feat, list):
+                    feat = [feat]
+                qD = dict()
+                for f in feat:
+                    if 'GBFeature_quals' in f:
+                        quals = f['GBFeature_quals']
+                        for qual in quals:
+                            if 'GBQualifier_value' in qual:
+                                qD[qual['GBQualifier_name']] = qual['GBQualifier_value']
+                if 'product' in qD:
+                    y = 0
+                    for string in rdrp_strings:
+                        if string in qD['product'].lower():
+                            w = 0
+                            b = 0
+                            for string2 in rdrp_not:
+                                if string2 in qD['product'].lower():
+                                    w += 1
+                            if w == 0 and b == 0:
+                                y += 1
+                    if y != 0 or len(rdrp_strings) == 0:
+                        prod = record['GBSeq_organism']
+                        virus_nam = ut_functions.clean_string(prod)
+                        if virus_nam[0] == virus_nam[0].lower():
+                            virus_nam = virus_nam[0].upper() + virus_nam[1:]
+                        if 'protein_id' in qD and 'translation' in qD:
+                            acc_prot = qD['protein_id']
+                            prot_seq = qD['translation']
+                            nuc_seq = record['GBSeq_sequence']
+                            virus_id = "%s|%s|%s" % (acc_prot, virus_nam, suffix)
+        
+                            DD['accD'][acc_prot] = virus_id
+                            DD['nucD'][acc_prot] = nuc_seq
+                            DD['protD'][acc_prot] = prot_seq
+                            DD['namD'][acc_prot] = names[acc]
+                            DD['nuc_nam_D'][acc_prot] = acc
+                            DD['descD'][acc_prot] = qD['product']
     
-                        DD['accD'][acc_prot] = virus_id
-                        DD['nucD'][acc_prot] = nuc_seq
-                        DD['protD'][acc_prot] = prot_seq
-                        DD['namD'][acc_prot] = names[acc]
-                        DD['nuc_nam_D'][acc_prot] = acc
-                        DD['descD'][acc_prot] = qD['product']
-
-                        x += 1
-
+                            x += 1
+    
+                    else:
+    
+                        if typ == "nt":
+                            if 'translation' in qD and 'protein_id' in qD:
+                                pp["%s|%s|%s" % (acc, qD['protein_id'], qD['product'].replace(" ", "_"))] = qD['translation']
+    
+            if x == 0:
+                if typ == "nt":
+                    for prod in pp:
+                        current = pp[prod]
+                        out.write(">%s\n%s\n" % (prod, current))
+                    if len(pp) == 0:
+                        outnt.write(">%s\n%s\n" % (acc, record['GBSeq_sequence']))
                 else:
-
-                    if typ == "nt":
-                        if 'translation' in qD and 'protein_id' in qD:
-                            pp["%s|%s|%s" % (acc, qD['protein_id'], qD['product'].replace(" ", "_"))] = qD['translation']
-
-        if x == 0:
-            if typ == "nt":
-                for prod in pp:
-                    current = pp[prod]
-                    out.write(">%s\n%s\n" % (prod, current))
-                if len(pp) == 0:
-                    outnt.write(">%s\n%s\n" % (acc, record['GBSeq_sequence']))
-            else:
-                out.write(">%s\n%s\n" % (acc, record['GBSeq_sequence']))
+                    out.write(">%s\n%s\n" % (acc, record['GBSeq_sequence']))
     out.close()
+    outnt.close()
     return (DD)
 
 
@@ -217,8 +274,7 @@ def makeMDTable(DD):
     df = df.merge(pd.DataFrame(DD['namD'].items(),
                                columns=['Accession', 'Original_Name']),
                   'right')
-    df['Nuccore_Accession'] = [DD['nuc_nam_D'][x] for x in df['Accession']]
-
+    df['Nuccore_Accession'] = [DD['nuc_nam_D'][x] if x in DD['nuc_nam_D'] else None for x in df['Accession']]
     df = df.merge(pd.DataFrame(DD['tax_ids'].items(),
                                columns=['Accession', 'TaxID']), 'outer')
     df['TaxID'] = df['TaxID'].fillna(0)
@@ -231,28 +287,29 @@ def makeMDTable(DD):
     return (df)
 
 
-def writeAll(DD, df, auth):
+def writeAll(DD, df, auth, path='data/', spath='data/subsets'):
 
-    df.to_csv("data/metadata_table.tsv", sep="\t", index=None)
-    out = open("data/clean_gb_fasta_nucleotide_%s.fasta" % auth, "w")
+    df.to_csv("%s/metadata_table.tsv" % path, sep="\t", index=None)
+    out = open("%s/clean_gb_fasta_nucleotide_%s.fasta" % (path, auth), "w")
     for nam, seq in DD['nucD'].items():
             out.write(">%s\n%s\n" % (DD['accD'][nam],
                                      seq.upper().replace(
                                          "-", "").replace("X", "")))
     out.close()
-    out = open("data/clean_gb_fasta_%s.fasta" % auth, "w")
+    out = open("%s/clean_gb_fasta_%s.fasta" % (path, auth), "w")
     for nam, seq in DD['protD'].items():
             out.write(">%s\n%s\n" % (DD['accD'][nam],
                                      seq.upper().replace(
                                          "-", "").replace("X", "")))
     out.close()
     try:
-        os.mkdir("data/subsets")
+        os.mkdir(spath)
     except:
         pass
     for clasi in set(df['Classification']):
         subtab = df[df['Classification'] == clasi]
-        out = open("data/subsets/%s.fasta" % clasi, "w")
+
+        out = open("%s/%s.fasta" % (spath, clasi), "w")
         for nam in set(subtab['Accession']):
             out.write(">%s\n%s\n" % (DD['accD'][nam],
                                      seq.upper().replace(
@@ -280,7 +337,14 @@ def namesFromOrganism(record, acc):
         org = org[0].upper() + org[1:]
     return (org)
 
-    
+
+def nameDFromOrganism(records):
+    names = dict()
+    for acc, record in records.items():
+        names[acc] = namesFromOrganism(record, acc)
+    return (names)
+
+
 def BlastToSeqsNt(blast, F, records, names, DD, suffix):
     for ind in blast.index.values:
         row = blast.loc[ind]
@@ -310,28 +374,27 @@ def BlastToSeqsNt(blast, F, records, names, DD, suffix):
     return (DD)
 
 
-def BlastToSeqsORFs(nt_fasta, blast, oD, sD, names, suffix, DD):
+def BlastToSeqsORFs(nt_fasta, blast, oD, sD, names, suffix, DD, idcol='query'):
     for ind in blast.index.values:
         row = blast.loc[ind]
-        q = row['query']
+        q = row[idcol]
         qnam, orfn = q.split("|")
-        qnam2 = qnam.replace("_", " ")
+       # qnam2 = qnam.replace("_", " ")
         orfn = int(orfn)
-        orf_details = oD[qnam2][orfn]
-        start, end, strandid = orf_details[0], orf_details[1], orf_details[2]
-        if strandid == "+":
-            strand = "p"
-        else:
-            strand = "m"
-        ss = nt_fasta[qnam2][start:end]
-        if strand == "m":
+        orf_details = oD[qnam][orfn]
+        start, end, strand = orf_details[0], orf_details[1], orf_details[2]
+        start = int(start)
+        end = int(end)
+
+        ss = nt_fasta[qnam][start:end]
+        if strand == "-":
             ss = Bio.Seq.reverse_complement(ss)
         transeq = Bio.Seq.translate(ss)
-        assert transeq == sD[qnam2][orfn]
-        pos = "ntpp%s_%s_%s" % (start, end, strand)
+        assert transeq == sD[qnam][orfn]
+        pos = "%s:%s-%s%s_pp_nogb" % (qnam, start, end, strand)
 
-        virus_name = names[q]
-        acc = "noacc_%s" % (virus_name)
+        virus_name = names[q.split("|")[0]]
+        acc = pos
         virus_id = "%s|%s|%s" % (acc, virus_name, suffix)
         DD['accD'][acc] = virus_id
         DD['protD'][acc] = transeq

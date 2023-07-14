@@ -157,14 +157,14 @@ def cleanNCBITaxonomy(record):
 
     if record['ParentTaxId'] == '1':
         tD[record['Rank']] = (record['ScientificName'], record['TaxId'])
-    else:
-        segs = record['LineageEx']
-        
-        for seg in segs:
-            ID = seg['TaxId']
-            nam = seg['ScientificName']
-            rank = seg['Rank']
-            tD[rank] = (nam, ID)
+    tD[record['Rank']] = (record['ScientificName'], record['TaxId'])
+    segs = record['LineageEx']
+    
+    for seg in segs:
+        ID = seg['TaxId']
+        nam = seg['ScientificName']
+        rank = seg['Rank']
+        tD[rank] = (nam, ID)
     return (tD)
 
 
@@ -172,6 +172,14 @@ def getStandardTaxRanks():
     ranks = ['superkingdom', 'kingdom', 'phylum', 'subphylum', 'class',
              'order', 'family', 'subfamily', 'genus', 'species']
     return (ranks)
+
+
+def getTaxCols(ranks):
+    cols = ['TaxID', 'NCBI_ScientificName', 'NCBI_Rank']
+    for rank in ranks:
+        cols.append("%s_name" % rank)
+        cols.append("%s_TaxID" % rank)
+    return (cols)
 
 
 def makeTaxTab(taxD, ranks=getStandardTaxRanks()):
@@ -188,13 +196,16 @@ def makeTaxTab(taxD, ranks=getStandardTaxRanks()):
                 row.append(0)
         rows.append(row)
     tab = pd.DataFrame(rows)
-    cols = ['TaxID', 'NCBI_ScientificName', 'NCBI_Rank']
-    for rank in ranks:
-        cols.append("%s_name" % rank)
-        cols.append("%s_TaxID" % rank)
+    cols = getTaxCols(ranks)
     tab.columns = cols
     return (tab)
 
+def makeBlankTaxTab(ranks=getStandardTaxRanks()):
+    cols = getTaxCols(ranks)
+    df = pd.DataFrame(columns=['Accession'] + cols)
+    return (df)
+
+    
 def getNCBISeqs(db, acclist, chunksize, outfile):
     div = 10**math.floor(math.log10(len(acclist)))
     chunks = splitaccs(acclist, chunksize)
