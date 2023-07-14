@@ -21,8 +21,8 @@ def fixStatement(statement, syst=""):
 
 def getRecord(acc,
               db='nuccore',
-              email='kab84@cam.ac.uk',
-              api='32230a5082e8b865e7627e41068bee1f3208',
+              email,
+              api,
               silent=True):
     '''
     Retrieve taxonomic lineage for an NCBI taxonomy ID using their API,
@@ -56,8 +56,8 @@ def getRecord(acc,
 
 
 def getRecordSRA(acc,
-              email='kab84@cam.ac.uk',
-              api='32230a5082e8b865e7627e41068bee1f3208'):
+              email,
+              api):
     '''
     Retrieve taxonomic lineage for an NCBI taxonomy ID using their API,
     plus the common name.
