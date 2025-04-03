@@ -29,8 +29,9 @@ def findTaxonID(species_name, syst=""):
     i = 0
     species_name = species_name.replace("_", " ")
     while True:
-        statement = 'esearch -db taxonomy -query "%s" \
-        | efetch' % species_name
+        statement = 'esearch -db taxonomy -query %s| \
+                     efetch -mode xml | \
+                     xtract -pattern TaxId -element TaxId' % species_name
   #      statement = NCBI.fixStatement(statement)
         L = Run.systemPopen(statement, syst)
         if len(L) == 0 and i > 50:

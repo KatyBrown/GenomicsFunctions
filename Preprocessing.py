@@ -73,7 +73,9 @@ def getEBIAddress(run):
     
 def getSRA(pref, ispaired, log, sra_opts,
            outfiles, nreads_download=1000000000,
-           syst="", sra='ncbi', asperadir=""):
+           syst="", sra='ncbi', asperadir="",
+           sra_path="/home/katy/Downloads/sratoolkit.3.1.0-ubuntu64/bin",
+           outdir="fastqs.dir"):
     '''
     Downloads dataset "pref" from SRA.
     
@@ -166,10 +168,11 @@ def getSRA(pref, ispaired, log, sra_opts,
                 for run in runs:
                     if sra == "ncbi":
                         # runs ncbi fastq-dump
-                        statement = '''fastq-dump %(nreads_download)s %(sra_opts)s \
+                        statement = '''%(sra_path)s/fasterq-dump \
+                         %(sra_opts)s \
                         --split-files \
-                        --outdir fastqs.dir &>>%(log)s\
-                        %(run)s ''' % locals()
+                        --outdir %(outdir)s \
+                        %(run)s  >%(log)s 2>&1 &&''' % locals()
                         statements.append(statement)
                     elif sra == "ebi":
                         # fastq - 4 lines per read
@@ -239,10 +242,10 @@ def getSRA(pref, ispaired, log, sra_opts,
                 nspots = "-X %i" % (nreads_download)
                 if sra == "ncbi":
                     # runs ncbi fastq-dump
-                    statement = '''fastq-dump %(nspots)s %(sra_opts)s \
-                    --split-files --gzip \
-                    --outdir fastqs.dir &>>%(log)s\
-                    %(pref)s ''' % locals()
+                    statement = '''%(sra_path)s/fasterq-dump %(sra_opts)s \
+                    --split-files \
+                    --outdir %(outdir)s \
+                    %(pref)s  >%(log)s 2>&1''' % locals()
                 elif sra == "ebi":
                     # downloads from EBI ftp site using curl
                     # -s - silent
@@ -279,10 +282,10 @@ def getSRA(pref, ispaired, log, sra_opts,
                     rm -rf fastqs.dir/%(tempname2)s""" % locals()
                 ut_functions.writeCommand(statement, pref)
                 Run.systemRun(statement, syst)
-                statement = 'gzip -f fastqs.dir/%s_1.fastq' % run
+                statement = 'gzip -f %s/%s_1.fastq' % (outdir, run)
                 ut_functions.writeCommand(statement, pref)
                 Run.systemRun(statement, syst)
-                statement = 'gzip -f fastqs.dir/%s_2.fastq' % run
+                statement = 'gzip -f %s/%s_2.fastq' % (outdir, run)
                 ut_functions.writeCommand(statement, pref)
                 Run.systemRun(statement, syst) 
             pathlib.Path(out3).touch()
@@ -299,9 +302,9 @@ def getSRA(pref, ispaired, log, sra_opts,
                 for run in runs:
                     if sra == "ncbi":
                         # runs ncbi fastq-dump
-                        statement = '''fastq-dump %(nspots)s %(sra_opts)s \
-                        --outdir fastqs.dir &>>%(log)s\
-                        %(run)s ''' % locals()
+                        statement = '''%(sra_path)s/fasterq-dump %(sra_opts)s \
+                        --outdir %(outdir)s \
+                        %(run)s >%(log)s 2>&1 &&''' % locals()
                         statements.append(statement)
                     elif sra == "ebi":
                         # downloads from EBI ftp site using curl
@@ -350,10 +353,10 @@ def getSRA(pref, ispaired, log, sra_opts,
                 nspots = "-X %i" % (nreads_download)
                 run = pref
                 if sra == "ncbi":
+
                     # runs ncbi fastq-dump
-                    statement = '''fastq-dump %(nspots)s %(sra_opts)s \
-                    --gzip \
-                    --outdir fastqs.dir %(pref)s &>%(log)s''' % locals()
+                    statement = '''%(sra_path)s/fasterq-dump  %(sra_opts)s \
+                    --outdir %(outdir)s %(pref)s >%(log)s 2>&1''' % locals()
                 elif sra == "ebi":
                     # downloads from EBI ftp site using curl
                     # -s - silent
@@ -380,7 +383,7 @@ def getSRA(pref, ispaired, log, sra_opts,
                     rm -rf fastqs.dir/%(tempname)s""" % locals()
                 ut_functions.writeCommand(statement, pref)
                 Run.systemRun(statement, syst)
-                statement = "gzip -f fastqs.dir/%s.fastq" % pref
+                statement = "gzip -f %(outdir)s/%(pref)s.fastq" % locals()
                 ut_functions.writeCommand(statement, pref)
                 Run.systemRun(statement, syst)            
             pathlib.Path(out1).touch()
@@ -388,6 +391,9 @@ def getSRA(pref, ispaired, log, sra_opts,
         if ispaired:
             # check the output exists (the download didn't fail)
             # if it does move on to the next step, else keep trying
+            if not out1.endswith("gz"):
+                out1 = "%s.gz" % out1
+                out2 = "%s.gz" % out2
             o1 = gzip.open(out1).readlines(10)
             o2 = gzip.open(out2).readlines(10)
             if len(o1) != 0 and len(o2) != 0:
@@ -397,6 +403,8 @@ def getSRA(pref, ispaired, log, sra_opts,
         else:
             # check the output exists (the download didn't fail)
             # if it does move on to the next step, else keep trying
+            if not out3.endswith("gz"):
+                out3 = "%s.gz" % (out3)
             o = gzip.open(out3).readlines(10)
             if len(o) != 0:
                 break
@@ -407,7 +415,7 @@ def getSRA(pref, ispaired, log, sra_opts,
 
 
 def runFastQC(infiles, outfiles, pref, ispaired, log, threads=4,
-              syst=""):
+              syst="", outdir='fastqc.dir'):
     '''
     Generates a statement and runs FastQC
     
@@ -439,17 +447,18 @@ def runFastQC(infiles, outfiles, pref, ispaired, log, threads=4,
         out2 = outfiles[1].replace(".html", ".zip")
         # statement to run fastqc and unzip the output
         statement = '''fastqc %(in1)s %(in2)s \
-        -o fastqc.dir -threads %(threads)i &>%(log)s;
-        unzip %(out1)s -d fastqc.dir;
-        unzip %(out2)s -d fastqc.dir''' % locals()
+        -o %(outdir)s -threads %(threads)i >%(log)s 2>&1 && \
+        unzip %(out1)s -d %(outdir)s \
+        unzip %(out2)s -d %(outdir)s''' % locals()
+
         pathlib.Path(outfiles[2]).touch()
     else:
         in1 = infiles[2]
         out1 = outfiles[2].replace(".html", ".zip")
         # statement to run fastqc and unzip the output
-        statement = '''fastqc %(in1)s -o fastqc.dir \
-        -threads %(threads)i &>%(log)s;\
-        unzip %(out1)s -d fastqc.dir''' % locals()
+        statement = '''fastqc %(in1)s -o %(outdir)s \
+        -threads %(threads)i >%(log)s 2>&1 &&\
+        unzip %(out1)s -d %(outdir)s''' % locals()
         pathlib.Path(outfiles[0]).touch()
         pathlib.Path(outfiles[1]).touch()
 
@@ -459,7 +468,7 @@ def runFastQC(infiles, outfiles, pref, ispaired, log, threads=4,
 
 
 def trimReadsTrimGalore(infiles, outfiles, ispaired, pref, log, opts,
-                        syst=""):
+                        syst="", trimdir='trimmed.dir'):
     '''
     Generates and runs a statement to trim reads using Trim Galore
     
@@ -488,28 +497,28 @@ def trimReadsTrimGalore(infiles, outfiles, ispaired, pref, log, opts,
         in2 = infiles[1]
         # statement to run trim galore with paired end settings
         statement = '''trim_galore --paired %(in1)s %(in2)s \
-        -o trimmed.dir %(opts)s &>%(log)s''' % locals()
+        -o %(trimdir)s %(opts)s >%(log)s 2>&1''' % locals()
         pathlib.Path(outfiles[2]).touch()
         ut_functions.writeCommand(statement, pref)
         Run.systemRun(statement, syst)
-        stem1 = in1.split("/")[-1]
-        shutil.move("trimmed.dir/%s_trimming_report.txt" % stem1,
-                    "logs.dir/%s_trimming_report.txt" % stem1)
-        stem2 = in2.split("/")[-1]
-        shutil.move("trimmed.dir/%s_trimming_report.txt" % stem2,
-                    "logs.dir/%s_trimming_report.txt" % stem2)
+       # stem1 = in1.split("/")[-1]
+       # shutil.move("trimmed.dir/%s_trimming_report.txt" % stem1,
+       #             "logs.dir/%s_trimming_report.txt" % stem1)
+       # stem2 = in2.split("/")[-1]
+       # shutil.move("trimmed.dir/%s_trimming_report.txt" % stem2,
+        #            "logs.dir/%s_trimming_report.txt" % stem2)
     else:
         in1 = infiles[2]
         # statement to run trim galore with single end settings
         statement = '''trim_galore %(opts)s %(in1)s \
-        -o trimmed.dir &>%(log)s''' % locals()
+        -o %(trimdir)s >%(log)s 2>&1''' % locals()
         pathlib.Path(outfiles[0]).touch()
         pathlib.Path(outfiles[1]).touch()
         ut_functions.writeCommand(statement, pref)
         Run.systemRun(statement, syst)
-        stem3 = in1.split("/")[-1]
-        shutil.move("trimmed.dir/%s_trimming_report.txt" % stem3,
-                    "logs.dir/%s_trimming_report.txt" % stem3)    
+    #    stem3 = in1.split("/")[-1]
+    #    shutil.move("trimmed.dir/%s_trimming_report.txt" % stem3,
+    #                "logs.dir/%s_trimming_report.txt" % stem3)    
 
 
 def renameReads(infiles, outfiles, ispaired, pref, syst=""):

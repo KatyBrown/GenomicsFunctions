@@ -107,7 +107,7 @@ def mapReadsHisat(infiles, outfile, genomepath, genomename, strand,
 def mapReadsBowtie(infiles, outfile, genomepath, genomename, strand,
                    ispaired, options, mismatches, pref, unmapped=[],
                    threads=1, maxmem="1.9G", double=False,
-                   syst=""):
+                   syst="", logdir='logs.dir'):
     '''
     Generates and runs a statement to map reads using bowtie2.
     
@@ -155,8 +155,8 @@ def mapReadsBowtie(infiles, outfile, genomepath, genomename, strand,
     job_memory = maxmem
     
     # bowtie makes a .log and a .met file when logging
-    log = "logs.dir/%s_%s_mapping.log" % (pref, genomename)
-    met = "logs.dir/%s_%s_mapping.met" % (pref, genomename)
+    log = "%(s)s/%s_%s_mapping.log" % (logdir, pref, genomename)
+    met = "%(s)s/%s_%s_mapping.met" % (logdir, pref, genomename)
 
     # In ignore-quals mode, by default, each mismatch give a penalty of 6
     # so for 8 mismatches this would be a minimum score of 48.
@@ -203,7 +203,7 @@ def mapReadsBowtie(infiles, outfile, genomepath, genomename, strand,
 def mapReadsBowtie1(infiles, outfile, genomepath, genomename,
                     ispaired, options, mismatches, pref, threads, double=False,
                     maxmem="1.9G",
-                    syst=""):
+                    syst="", logdir='logs.dir'):
     '''
     Generates and runs a statement to map reads using bowtie1
     
@@ -239,15 +239,15 @@ def mapReadsBowtie1(infiles, outfile, genomepath, genomename,
     '''
     if double is True:
         bowtie = "%s/%s/bowtie1/%s"
-    elif double is "exact":
+    elif double == "exact":
         bowtie = genomepath
     else:
         bowtie = "%s/bowtie1/%s" % (genomepath, genomename)
     job_threads = threads
     job_memory = maxmem
 
-    log = "logs.dir/%s_%s_mapping.log" % (pref, genomename)
-    met = "logs.dir/%s_%s_mapping.met" % (pref, genomename)
+    log = "%s/%s_mapping.log" % (logdir, pref)
+    met = "%s/%s_mapping.met" % (logdir, pref)
 
     if ispaired:
         in1 = infiles[0]
