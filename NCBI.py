@@ -13,6 +13,7 @@ def getApiKey():
     params = ut_functions.readIni("pipeline.ini")
     return (params['api_key'])
 
+
 def fixStatement(statement, syst=""):
     # statement = statement.replace("esearch ", "esearch -api %s " % getApiKey())
     # statement = statement.replace("efetch ", "efetch -api %s " % getApiKey())
@@ -93,6 +94,7 @@ def splitaccs(accs, splitsize):
     chunks = np.array_split(accarray, nchunks)
     return(chunks)
 
+
 def getRecords(accs, chunksize=50, db='nuccore', silent=False, lowmem=False):
     chunks = splitaccs(accs, chunksize)
     records = []
@@ -115,6 +117,48 @@ def getRecords(accs, chunksize=50, db='nuccore', silent=False, lowmem=False):
             print (record)
             raise RuntimeError ("ID not found")
     return (recordD)
+
+
+def getTaxRecs(taxa, chunksize=50, email='kab84@cam.ac.uk',
+               api='32230a5082e8b865e7627e41068bee1f3208', silent=False):
+    chunks = splitaccs(taxa, chunksize)
+    Entrez.email = email
+    Entrez.api = api
+    records = []
+    recordD = dict()
+    for i, chunk in enumerate(chunks):
+        div = 10**math.floor(math.log10(len(chunks)))
+        if not silent:
+            if i % int(div) == 0:
+                print("Searched %i / %i accession blocks" % (i, len(chunks)))
+            string = ' OR '.join([x.replace("_", " ") for x in chunk])
+        handle = Entrez.esearch(db='taxonomy', term=string, retmax=1000)
+        res = Entrez.read(handle)
+        IDs = res['IdList']
+        records += getRecord(",".join(IDs), 'taxonomy', silent=silent)
+    scinames = set()
+    nf = set()
+    for record in records:
+        sciname = record['ScientificName']
+        if sciname in taxa:  
+            scinames.add(sciname)
+            recordD[sciname] = record
+        else:
+            nf.add(sciname)
+    missing = set(taxa) - scinames
+    for m in missing:
+        handle = Entrez.esearch(db='taxonomy', term=m, retmax=1000)
+        res = Entrez.read(handle)
+        IDs = res['IdList']
+        if len(IDs) == 1:
+            ID = IDs[0]
+            rec = getRecord(ID, 'taxonomy', silent=silent)[0]
+            recordD[m] = rec
+        else:
+            print(IDs, m, "failed")
+
+    return (recordD)
+
 
 def getRecordsSRA(accs):
     records = []
@@ -254,3 +298,11 @@ def get_ipg_nuccore(prot_acc):
     # Parse into a dict - key is ID, value is sequence
     fasta = {nuc_record.split("\n")[0]: "".join(nuc_record.split("\n")[1:])}
     return (fasta)
+
+
+def getTaxSRA(recD):
+    taxids = dict()
+    for acc, rec in recD.items():
+        tax = rec['full']['SAMPLE']['SAMPLE_NAME']['TAXON_ID']
+        taxids[acc] = tax
+    return (taxids)
