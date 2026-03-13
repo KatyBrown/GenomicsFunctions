@@ -13,6 +13,7 @@ def getApiKey():
     params = ut_functions.readIni("pipeline.ini")
     return (params['api_key'])
 
+
 def fixStatement(statement, syst=""):
     # statement = statement.replace("esearch ", "esearch -api %s " % getApiKey())
     # statement = statement.replace("efetch ", "efetch -api %s " % getApiKey())
@@ -66,18 +67,19 @@ def getRecordSRA(acc,
     Entrez.email = email
     Entrez.api = api
     x = 0
+    search = None
     while x < 5:
         try:
             # Retrieve all data for this taxonomy ID from NCBI Taxonomy
             search = Entrez.efetch(id=acc,
                                    db='sra',
                                    retmode="xml")
-            print ("hi %s" % x)
             break
         except Entrez.HTTPError:
             time.sleep(10)
             x += 1
-    if x != 10:
+            
+    if x != 10 and search is not None:
         record = xmltodict.parse(search.read())
         record = record['EXPERIMENT_PACKAGE_SET']['EXPERIMENT_PACKAGE']
         return(record)
@@ -92,7 +94,8 @@ def splitaccs(accs, splitsize):
     chunks = np.array_split(accarray, nchunks)
     return(chunks)
 
-def getRecords(accs, chunksize=50, db='nuccore', silent=False):
+
+def getRecords(accs, chunksize=50, db='nuccore', silent=False, lowmem=False):
     chunks = splitaccs(accs, chunksize)
     records = []
     recordD = dict()
@@ -104,6 +107,9 @@ def getRecords(accs, chunksize=50, db='nuccore', silent=False):
         records += getRecord(",".join(chunk), db, silent=silent)
     for record in records:
         if 'GBSeq_accession-version' in record:
+            if lowmem:
+                if 'GBSeq_sequence' in record:
+                    record.pop('GBSeq_sequence')
             recordD[record['GBSeq_accession-version']] = record
         elif 'TaxId' in record:
             recordD[record['TaxId']] = record
@@ -111,6 +117,48 @@ def getRecords(accs, chunksize=50, db='nuccore', silent=False):
             print (record)
             raise RuntimeError ("ID not found")
     return (recordD)
+
+
+def getTaxRecs(taxa, chunksize=50, email='kab84@cam.ac.uk',
+               api='32230a5082e8b865e7627e41068bee1f3208', silent=False):
+    chunks = splitaccs(taxa, chunksize)
+    Entrez.email = email
+    Entrez.api = api
+    records = []
+    recordD = dict()
+    for i, chunk in enumerate(chunks):
+        div = 10**math.floor(math.log10(len(chunks)))
+        if not silent:
+            if i % int(div) == 0:
+                print("Searched %i / %i accession blocks" % (i, len(chunks)))
+            string = ' OR '.join([x.replace("_", " ") for x in chunk])
+        handle = Entrez.esearch(db='taxonomy', term=string, retmax=1000)
+        res = Entrez.read(handle)
+        IDs = res['IdList']
+        records += getRecord(",".join(IDs), 'taxonomy', silent=silent)
+    scinames = set()
+    nf = set()
+    for record in records:
+        sciname = record['ScientificName']
+        if sciname in taxa:  
+            scinames.add(sciname)
+            recordD[sciname] = record
+        else:
+            nf.add(sciname)
+    missing = set(taxa) - scinames
+    for m in missing:
+        handle = Entrez.esearch(db='taxonomy', term=m, retmax=1000)
+        res = Entrez.read(handle)
+        IDs = res['IdList']
+        if len(IDs) == 1:
+            ID = IDs[0]
+            rec = getRecord(ID, 'taxonomy', silent=silent)[0]
+            recordD[m] = rec
+        else:
+            print(IDs, m, "failed")
+
+    return (recordD)
+
 
 def getRecordsSRA(accs):
     records = []
@@ -125,29 +173,31 @@ def getRecordsSRA(accs):
         trueaccs = []
         rr = dict()
         for level in ['experiment', 'study', 'sample']:
-            acc = record[level.upper()]['@accession']
-            if acc in accs:
-                trueaccs.append(acc)
-            rr[level] = acc
-        runs = record['RUN_SET']
-        if not isinstance(runs, list):
-            runs = [runs]
-        runL = []
-        for run in runs:
-
-            acc = run['RUN']
-            if not isinstance(acc, list):
-                acc = [acc]
-            for a in acc:
-                a2 = a['@accession']
-                if a2 in accs:
-                    trueaccs.append(a2)
-                runL.append(a)
-        rr['runs'] = runL
-        rr['full'] = record
-        assert len(trueaccs) != 0
-        for acc in trueaccs:
-            recordD[acc] = rr
+            if level.upper() in record:
+                acc = record[level.upper()]['@accession']
+                if acc in accs:
+                    trueaccs.append(acc)
+                rr[level] = acc
+        if 'RUN_SET' in record:
+            runs = record['RUN_SET']
+            if not isinstance(runs, list):
+                runs = [runs]
+            runL = []
+            for run in runs:
+    
+                acc = run['RUN']
+                if not isinstance(acc, list):
+                    acc = [acc]
+                for a in acc:
+                    a2 = a['@accession']
+                    if a2 in accs:
+                        trueaccs.append(a2)
+                    runL.append(a)
+            rr['runs'] = runL
+            rr['full'] = record
+            #assert len(trueaccs) != 0
+            for acc in trueaccs:
+                recordD[acc] = rr
     return (recordD)
 
 
@@ -229,4 +279,30 @@ def getNCBISeqs(db, acclist, chunksize, outfile):
             out_comb.write(line)
     out_comb.close()
     shutil.rmtree(tempdir)
+
+
+def get_ipg_nuccore(prot_acc):
+		
+    # download the record from IPG
+    ipg_record = Entrez.efetch(id=prot_acc, db='ipg').read().decode()
+
+    rec = ipg_record.split("\n")[1]
+    if len(rec) == 0:
+        return None
+    # Get the nucleotide ID from the first line of the resulting table
+    nt_acc = rec.split("\t")[2]
     
+    # Get the nucleotide record
+    nuc_record = Entrez.efetch(id=nt_acc, db='nuccore', rettype='fasta').read()
+    
+    # Parse into a dict - key is ID, value is sequence
+    fasta = {nuc_record.split("\n")[0]: "".join(nuc_record.split("\n")[1:])}
+    return (fasta)
+
+
+def getTaxSRA(recD):
+    taxids = dict()
+    for acc, rec in recD.items():
+        tax = rec['full']['SAMPLE']['SAMPLE_NAME']['TAXON_ID']
+        taxids[acc] = tax
+    return (taxids)

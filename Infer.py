@@ -129,7 +129,8 @@ def getStrand(pref, suffix="_strandedness", intype="salmon",
     return ""
 
 
-def inferPairedSRA(pref, outfile, syst=""):
+def inferPairedSRA(pref, outfile, syst="",
+                   sra_path="/home/katy/Downloads/sratoolkit.3.1.0-ubuntu64/bin"):
     '''
     Infers if an SRA dataset is paired or single end.
 
@@ -155,7 +156,8 @@ def inferPairedSRA(pref, outfile, syst=""):
 
 
     # Execute fastq-dump using -X1 - take the first read or read pair only
-    statement = """fastq-dump -X 1 --split-files %(pref)s """ % locals()
+    statement = """%(sra_path)s/fastq-dump -X 1 \
+                   --split-files %(pref)s """ % locals()
     ut_functions.writeCommand(statement, pref)
     Run.systemReRun(statement, syst)
     
