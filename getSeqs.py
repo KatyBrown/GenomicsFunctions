@@ -184,7 +184,6 @@ def ProtRecordsToProts(recordD, DD, suffix):
             if 'accession' in record['GBSeq_source-db']:
                 nt_acc = record['GBSeq_source-db'].split(" ")[-1]
                 DD['nuc_nam_D'][acc] = nt_acc
-
         prot_seq = record['GBSeq_sequence'].upper()
         virus_nam = ut_functions.clean_string(record['GBSeq_organism'])
         if virus_nam[0] == virus_nam[0].lower():

@@ -188,7 +188,8 @@ def translateRegions(genome_id, outdir, bedout):
     for nam, seq in F.items():
         trans = Bio.Seq.translate(seq)
         assert "*" not in trans
-        out.write(f">{nam}\n{trans}\n")
+        if len(set(list(trans))) > 12:
+            out.write(f">{nam}\n{trans}\n")
     out.close()
     return f"{outdir}/{genome_id}_orfs_trans.fasta"
 
